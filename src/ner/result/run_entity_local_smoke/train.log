@@ -1,0 +1,48 @@
+['run_entity.py', '--do_train', '--do_eval', '--eval_test', '--learning_rate=1e-5', '--task_learning_rate=5e-4', '--train_batch_size=8', '--eval_batch_size=64', '--num_epoch=1', '--context_window', '100', '--task', 'mimic01', '--data_dir', './data', '--train_data', './data/data_split/train_tiny.json', '--dev_data', './data/data_split/test_tiny.json', '--test_data', './data/data_split/test_tiny.json', '--model', 'prajjwal1/bert-tiny', '--output_dir', './result/run_entity_local_smoke']
+Namespace(task='mimic01', data_dir='./data', output_dir='./result/run_entity_local_smoke', max_span_length=8, train_batch_size=8, eval_batch_size=64, learning_rate=1e-05, task_learning_rate=0.0005, warmup_proportion=0.1, num_epoch=1, print_loss_step=100, eval_per_epoch=1, bertadam=False, do_aug=False, do_train=True, train_shuffle=False, do_eval=True, eval_test=True, dev_pred_filename='ent_pred_dev.json', test_pred_filename='ent_pred_mimic_headct.json', train_data='./data/data_split/train_tiny.json', dev_data='./data/data_split/test_tiny.json', test_data='./data/data_split/test_tiny.json', use_albert=False, model='prajjwal1/bert-tiny', bert_model_dir=None, seed=0, context_window=100)
+HTTP Request: HEAD https://huggingface.co/prajjwal1/bert-tiny/resolve/main/tokenizer_config.json "HTTP/1.1 404 Not Found"
+HTTP Request: GET https://huggingface.co/api/models/prajjwal1/bert-tiny/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+HTTP Request: GET https://huggingface.co/api/models/prajjwal1/bert-tiny/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+HTTP Request: HEAD https://huggingface.co/prajjwal1/bert-tiny/resolve/main/vocab.txt "HTTP/1.1 307 Temporary Redirect"
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/prajjwal1/bert-tiny/6f75de8b60a9f8a2fdf7b69cbd86d9e64bcb3837/vocab.txt "HTTP/1.1 200 OK"
+HTTP Request: HEAD https://huggingface.co/prajjwal1/bert-tiny/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/prajjwal1/bert-tiny/6f75de8b60a9f8a2fdf7b69cbd86d9e64bcb3837/config.json "HTTP/1.1 200 OK"
+HTTP Request: HEAD https://huggingface.co/prajjwal1/bert-tiny/resolve/main/model.safetensors "HTTP/1.1 404 Not Found"
+HTTP Request: HEAD https://huggingface.co/prajjwal1/bert-tiny/resolve/main/model.safetensors.index.json "HTTP/1.1 404 Not Found"
+HTTP Request: HEAD https://huggingface.co/prajjwal1/bert-tiny/resolve/main/pytorch_model.bin "HTTP/1.1 302 Found"
+HTTP Request: HEAD https://huggingface.co/prajjwal1/bert-tiny/resolve/main/model.safetensors "HTTP/1.1 404 Not Found"
+No CUDA found, using CPU.
+# Overlap: 0
+Extracted 60 samples from 60 documents, with 345 NER labels, 11.483 avg input length, 28 max length
+Max Length: 28, max NER: 15
+Long sentence: {'doc_key': '60', 'sentence_ix': 0} 126
+# Overlap: 0
+Extracted 200 samples from 200 documents, with 1489 NER labels, 15.655 avg input length, 126 max length
+Max Length: 126, max NER: 46
+eval_step=25, train_batches=25, eval_per_epoch=1
+HTTP Request: GET https://huggingface.co/api/models/prajjwal1/bert-tiny "HTTP/1.1 200 OK"
+HTTP Request: GET https://huggingface.co/api/models/prajjwal1/bert-tiny/commits/main "HTTP/1.1 200 OK"
+HTTP Request: GET https://huggingface.co/api/models/prajjwal1/bert-tiny/discussions?p=0 "HTTP/1.1 200 OK"
+HTTP Request: GET https://huggingface.co/api/models/prajjwal1/bert-tiny/commits/refs%2Fpr%2F13 "HTTP/1.1 200 OK"
+Evaluating...
+Accuracy: 0.910945
+Cor: 0, Pred TOT: 0, Gold TOT: 345
+P: 0.00000, R: 0.00000, F1: 0.00000
+Used time: 0.024932
+!!! Best valid (epoch=0): 0.00
+Saving model to ./result/run_entity_local_smoke...
+Loading BERT model from ./result/run_entity_local_smoke/
+HTTP Request: HEAD https://huggingface.co/prajjwal1/bert-tiny/resolve/refs%2Fpr%2F13/model.safetensors.index.json "HTTP/1.1 404 Not Found"
+No CUDA found, using CPU.
+# Overlap: 0
+Extracted 60 samples from 60 documents, with 345 NER labels, 11.483 avg input length, 28 max length
+Max Length: 28, max NER: 15
+Evaluating...
+Accuracy: 0.910945
+Cor: 0, Pred TOT: 0, Gold TOT: 345
+P: 0.00000, R: 0.00000, F1: 0.00000
+Used time: 0.022382
+Total pred entities: 0
+Output predictions to ./result/run_entity_local_smoke/ent_pred_mimic_headct.json..
+HTTP Request: HEAD https://huggingface.co/prajjwal1/bert-tiny/resolve/refs%2Fpr%2F13/model.safetensors "HTTP/1.1 302 Found"

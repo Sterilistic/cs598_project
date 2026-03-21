@@ -1,0 +1,13 @@
+# Data directories
+data/
+**/data/
+
+# Python bytecode and caches
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# Large local artifacts
+df_chexpert_plus_240401.csv
+src/ner/result/**/pytorch_model.bin

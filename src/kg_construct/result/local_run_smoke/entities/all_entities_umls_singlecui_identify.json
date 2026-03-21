@@ -1,0 +1,1392 @@
+{
+  "left": {
+    "CUI": "LOCAL_34022368",
+    "Name": "left",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "left"
+    ],
+    "Possibility": 1.0
+  },
+  "right": {
+    "CUI": "LOCAL_54267693",
+    "Name": "right",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "right"
+    ],
+    "Possibility": 1.0
+  },
+  "silhouette": {
+    "CUI": "LOCAL_87154904",
+    "Name": "silhouette",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "silhouette"
+    ],
+    "Possibility": 1.0
+  },
+  "stable": {
+    "CUI": "LOCAL_79642753",
+    "Name": "stable",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "stable"
+    ],
+    "Possibility": 1.0
+  },
+  "pleural": {
+    "CUI": "LOCAL_19338621",
+    "Name": "pleural",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "pleural"
+    ],
+    "Possibility": 1.0
+  },
+  "pulmonary": {
+    "CUI": "LOCAL_44800077",
+    "Name": "pulmonary",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "pulmonary"
+    ],
+    "Possibility": 1.0
+  },
+  "unchanged": {
+    "CUI": "LOCAL_35983780",
+    "Name": "unchanged",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "unchanged"
+    ],
+    "Possibility": 1.0
+  },
+  "region": {
+    "CUI": "LOCAL_16379912",
+    "Name": "region",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "region"
+    ],
+    "Possibility": 1.0
+  },
+  "edema": {
+    "CUI": "LOCAL_75234838",
+    "Name": "edema",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "edema"
+    ],
+    "Possibility": 1.0
+  },
+  "small": {
+    "CUI": "LOCAL_13487592",
+    "Name": "small",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "small"
+    ],
+    "Possibility": 1.0
+  },
+  "surgical": {
+    "CUI": "LOCAL_42378462",
+    "Name": "surgical",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "surgical"
+    ],
+    "Possibility": 1.0
+  },
+  "cardiomediastinal": {
+    "CUI": "LOCAL_85802763",
+    "Name": "cardiomediastinal",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "cardiomediastinal"
+    ],
+    "Possibility": 1.0
+  },
+  "lung": {
+    "CUI": "LOCAL_39726383",
+    "Name": "lung",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "lung"
+    ],
+    "Possibility": 1.0
+  },
+  "prior": {
+    "CUI": "LOCAL_66997910",
+    "Name": "prior",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "prior"
+    ],
+    "Possibility": 1.0
+  },
+  "calcified": {
+    "CUI": "LOCAL_89012284",
+    "Name": "calcified",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "calcified"
+    ],
+    "Possibility": 1.0
+  },
+  "mild": {
+    "CUI": "LOCAL_08000004",
+    "Name": "mild",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "mild"
+    ],
+    "Possibility": 1.0
+  },
+  "enlarged": {
+    "CUI": "LOCAL_74664667",
+    "Name": "enlarged",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "enlarged"
+    ],
+    "Possibility": 1.0
+  },
+  "upper": {
+    "CUI": "LOCAL_13751433",
+    "Name": "upper",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "upper"
+    ],
+    "Possibility": 1.0
+  },
+  "clips": {
+    "CUI": "LOCAL_60376651",
+    "Name": "clips",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "clips"
+    ],
+    "Possibility": 1.0
+  },
+  "appearance": {
+    "CUI": "LOCAL_63502144",
+    "Name": "appearance",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "appearance"
+    ],
+    "Possibility": 1.0
+  },
+  "stranding": {
+    "CUI": "LOCAL_22050817",
+    "Name": "stranding",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "stranding"
+    ],
+    "Possibility": 1.0
+  },
+  "opacities": {
+    "CUI": "LOCAL_68466788",
+    "Name": "opacities",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "opacities"
+    ],
+    "Possibility": 1.0
+  },
+  "wires": {
+    "CUI": "LOCAL_28116606",
+    "Name": "wires",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "wires"
+    ],
+    "Possibility": 1.0
+  },
+  "bilateral": {
+    "CUI": "LOCAL_38312826",
+    "Name": "bilateral",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "bilateral"
+    ],
+    "Possibility": 1.0
+  },
+  "effusions": {
+    "CUI": "LOCAL_68000152",
+    "Name": "effusions",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "effusions"
+    ],
+    "Possibility": 1.0
+  },
+  "effusion": {
+    "CUI": "LOCAL_67881809",
+    "Name": "effusion",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "effusion"
+    ],
+    "Possibility": 1.0
+  },
+  "lungs": {
+    "CUI": "LOCAL_36103691",
+    "Name": "lungs",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "lungs"
+    ],
+    "Possibility": 1.0
+  },
+  "clear": {
+    "CUI": "LOCAL_91105018",
+    "Name": "clear",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "clear"
+    ],
+    "Possibility": 1.0
+  },
+  "chest": {
+    "CUI": "LOCAL_41803280",
+    "Name": "chest",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "chest"
+    ],
+    "Possibility": 1.0
+  },
+  "interval": {
+    "CUI": "LOCAL_24038357",
+    "Name": "interval",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "interval"
+    ],
+    "Possibility": 1.0
+  },
+  "increased": {
+    "CUI": "LOCAL_31797238",
+    "Name": "increased",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "increased"
+    ],
+    "Possibility": 1.0
+  },
+  "redemonstration": {
+    "CUI": "LOCAL_09291764",
+    "Name": "redemonstration",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "redemonstration"
+    ],
+    "Possibility": 1.0
+  },
+  "two": {
+    "CUI": "LOCAL_53096480",
+    "Name": "two",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "two"
+    ],
+    "Possibility": 1.0
+  },
+  "sternotomy": {
+    "CUI": "LOCAL_34890718",
+    "Name": "sternotomy",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "sternotomy"
+    ],
+    "Possibility": 1.0
+  },
+  "bones": {
+    "CUI": "LOCAL_78604470",
+    "Name": "bones",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "bones"
+    ],
+    "Possibility": 1.0
+  },
+  "consolidation": {
+    "CUI": "LOCAL_66577251",
+    "Name": "consolidation",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "consolidation"
+    ],
+    "Possibility": 1.0
+  },
+  "granuloma": {
+    "CUI": "LOCAL_87324074",
+    "Name": "granuloma",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "granuloma"
+    ],
+    "Possibility": 1.0
+  },
+  "base": {
+    "CUI": "LOCAL_50653192",
+    "Name": "base",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "base"
+    ],
+    "Possibility": 1.0
+  },
+  "tips": {
+    "CUI": "LOCAL_12276136",
+    "Name": "tips",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "tips"
+    ],
+    "Possibility": 1.0
+  },
+  "view": {
+    "CUI": "LOCAL_23405295",
+    "Name": "view",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "view"
+    ],
+    "Possibility": 1.0
+  },
+  "focal": {
+    "CUI": "LOCAL_55094375",
+    "Name": "focal",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "focal"
+    ],
+    "Possibility": 1.0
+  },
+  "cardiac": {
+    "CUI": "LOCAL_99154067",
+    "Name": "cardiac",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "cardiac"
+    ],
+    "Possibility": 1.0
+  },
+  "position": {
+    "CUI": "LOCAL_02347820",
+    "Name": "position",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "position"
+    ],
+    "Possibility": 1.0
+  },
+  "extremity": {
+    "CUI": "LOCAL_85427792",
+    "Name": "extremity",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "extremity"
+    ],
+    "Possibility": 1.0
+  },
+  "line": {
+    "CUI": "LOCAL_72857402",
+    "Name": "line",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "line"
+    ],
+    "Possibility": 1.0
+  },
+  "hemithorax": {
+    "CUI": "LOCAL_28454136",
+    "Name": "hemithorax",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "hemithorax"
+    ],
+    "Possibility": 1.0
+  },
+  "retrocardiac": {
+    "CUI": "LOCAL_40156787",
+    "Name": "retrocardiac",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "retrocardiac"
+    ],
+    "Possibility": 1.0
+  },
+  "subtle": {
+    "CUI": "LOCAL_90678510",
+    "Name": "subtle",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "subtle"
+    ],
+    "Possibility": 1.0
+  },
+  "zone": {
+    "CUI": "LOCAL_37261538",
+    "Name": "zone",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "zone"
+    ],
+    "Possibility": 1.0
+  },
+  "significant": {
+    "CUI": "LOCAL_02786371",
+    "Name": "significant",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "significant"
+    ],
+    "Possibility": 1.0
+  },
+  "bony": {
+    "CUI": "LOCAL_26502123",
+    "Name": "bony",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "bony"
+    ],
+    "Possibility": 1.0
+  },
+  "abnormalities": {
+    "CUI": "LOCAL_76518815",
+    "Name": "abnormalities",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "abnormalities"
+    ],
+    "Possibility": 1.0
+  },
+  "absence": {
+    "CUI": "LOCAL_75817227",
+    "Name": "absence",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "absence"
+    ],
+    "Possibility": 1.0
+  },
+  "breast": {
+    "CUI": "LOCAL_52305761",
+    "Name": "breast",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "breast"
+    ],
+    "Possibility": 1.0
+  },
+  "shadow": {
+    "CUI": "LOCAL_12337641",
+    "Name": "shadow",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "shadow"
+    ],
+    "Possibility": 1.0
+  },
+  "mastectomy": {
+    "CUI": "LOCAL_64732217",
+    "Name": "mastectomy",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "mastectomy"
+    ],
+    "Possibility": 1.0
+  },
+  "mediastinal": {
+    "CUI": "LOCAL_11778426",
+    "Name": "mediastinal",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "mediastinal"
+    ],
+    "Possibility": 1.0
+  },
+  "decreased": {
+    "CUI": "LOCAL_77617726",
+    "Name": "decreased",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "decreased"
+    ],
+    "Possibility": 1.0
+  },
+  "soft": {
+    "CUI": "LOCAL_62329369",
+    "Name": "soft",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "soft"
+    ],
+    "Possibility": 1.0
+  },
+  "persistent": {
+    "CUI": "LOCAL_56108219",
+    "Name": "persistent",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "persistent"
+    ],
+    "Possibility": 1.0
+  },
+  "slightly": {
+    "CUI": "LOCAL_37860971",
+    "Name": "slightly",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "slightly"
+    ],
+    "Possibility": 1.0
+  },
+  "greater": {
+    "CUI": "LOCAL_74248687",
+    "Name": "greater",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "greater"
+    ],
+    "Possibility": 1.0
+  },
+  "calcifications": {
+    "CUI": "LOCAL_28989815",
+    "Name": "calcifications",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "calcifications"
+    ],
+    "Possibility": 1.0
+  },
+  "suprahilar": {
+    "CUI": "LOCAL_53584341",
+    "Name": "suprahilar",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "suprahilar"
+    ],
+    "Possibility": 1.0
+  },
+  "lymph": {
+    "CUI": "LOCAL_98321926",
+    "Name": "lymph",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "lymph"
+    ],
+    "Possibility": 1.0
+  },
+  "nodes": {
+    "CUI": "LOCAL_90633873",
+    "Name": "nodes",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "nodes"
+    ],
+    "Possibility": 1.0
+  },
+  "post": {
+    "CUI": "LOCAL_94527127",
+    "Name": "post",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "post"
+    ],
+    "Possibility": 1.0
+  },
+  "change": {
+    "CUI": "LOCAL_01844813",
+    "Name": "change",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "change"
+    ],
+    "Possibility": 1.0
+  },
+  "degenerative": {
+    "CUI": "LOCAL_65180905",
+    "Name": "degenerative",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "degenerative"
+    ],
+    "Possibility": 1.0
+  },
+  "changes": {
+    "CUI": "LOCAL_46691706",
+    "Name": "changes",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "changes"
+    ],
+    "Possibility": 1.0
+  },
+  "spine": {
+    "CUI": "LOCAL_87848200",
+    "Name": "spine",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "spine"
+    ],
+    "Possibility": 1.0
+  },
+  "views": {
+    "CUI": "LOCAL_19143269",
+    "Name": "views",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "views"
+    ],
+    "Possibility": 1.0
+  },
+  "development": {
+    "CUI": "LOCAL_55687624",
+    "Name": "development",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "development"
+    ],
+    "Possibility": 1.0
+  },
+  "lower": {
+    "CUI": "LOCAL_92952214",
+    "Name": "lower",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "lower"
+    ],
+    "Possibility": 1.0
+  },
+  "lobe": {
+    "CUI": "LOCAL_10025610",
+    "Name": "lobe",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "lobe"
+    ],
+    "Possibility": 1.0
+  },
+  "laterally": {
+    "CUI": "LOCAL_71213316",
+    "Name": "laterally",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "laterally"
+    ],
+    "Possibility": 1.0
+  },
+  "slight": {
+    "CUI": "LOCAL_21037230",
+    "Name": "slight",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "slight"
+    ],
+    "Possibility": 1.0
+  },
+  "increase": {
+    "CUI": "LOCAL_83889212",
+    "Name": "increase",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "increase"
+    ],
+    "Possibility": 1.0
+  },
+  "interstitial": {
+    "CUI": "LOCAL_32343897",
+    "Name": "interstitial",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "interstitial"
+    ],
+    "Possibility": 1.0
+  },
+  "markings": {
+    "CUI": "LOCAL_05505534",
+    "Name": "markings",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "markings"
+    ],
+    "Possibility": 1.0
+  },
+  "diffusely": {
+    "CUI": "LOCAL_49601568",
+    "Name": "diffusely",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "diffusely"
+    ],
+    "Possibility": 1.0
+  },
+  "arteries": {
+    "CUI": "LOCAL_81551826",
+    "Name": "arteries",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "arteries"
+    ],
+    "Possibility": 1.0
+  },
+  "bilaterally": {
+    "CUI": "LOCAL_16643514",
+    "Name": "bilaterally",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "bilaterally"
+    ],
+    "Possibility": 1.0
+  },
+  "lateral": {
+    "CUI": "LOCAL_40049936",
+    "Name": "lateral",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "lateral"
+    ],
+    "Possibility": 1.0
+  },
+  "unremarkable": {
+    "CUI": "LOCAL_56477475",
+    "Name": "unremarkable",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "unremarkable"
+    ],
+    "Possibility": 1.0
+  },
+  "12 mm": {
+    "CUI": "LOCAL_15950558",
+    "Name": "12 mm",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "12 mm"
+    ],
+    "Possibility": 1.0
+  },
+  "density": {
+    "CUI": "LOCAL_65901014",
+    "Name": "density",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "density"
+    ],
+    "Possibility": 1.0
+  },
+  "anterior": {
+    "CUI": "LOCAL_42736631",
+    "Name": "anterior",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "anterior"
+    ],
+    "Possibility": 1.0
+  },
+  "fifth": {
+    "CUI": "LOCAL_74552516",
+    "Name": "fifth",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "fifth"
+    ],
+    "Possibility": 1.0
+  },
+  "rib": {
+    "CUI": "LOCAL_65353722",
+    "Name": "rib",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "rib"
+    ],
+    "Possibility": 1.0
+  },
+  "study": {
+    "CUI": "LOCAL_51611844",
+    "Name": "study",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "study"
+    ],
+    "Possibility": 1.0
+  },
+  "picc": {
+    "CUI": "LOCAL_13693190",
+    "Name": "picc",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "picc"
+    ],
+    "Possibility": 1.0
+  },
+  "picc line": {
+    "CUI": "LOCAL_68421533",
+    "Name": "picc line",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "picc line"
+    ],
+    "Possibility": 1.0
+  },
+  "compatible": {
+    "CUI": "LOCAL_37729484",
+    "Name": "compatible",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "compatible"
+    ],
+    "Possibility": 1.0
+  },
+  "internal": {
+    "CUI": "LOCAL_90758525",
+    "Name": "internal",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "internal"
+    ],
+    "Possibility": 1.0
+  },
+  "jugular": {
+    "CUI": "LOCAL_51655895",
+    "Name": "jugular",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "jugular"
+    ],
+    "Possibility": 1.0
+  },
+  "central": {
+    "CUI": "LOCAL_82806019",
+    "Name": "central",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "central"
+    ],
+    "Possibility": 1.0
+  },
+  "venous": {
+    "CUI": "LOCAL_08946854",
+    "Name": "venous",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "venous"
+    ],
+    "Possibility": 1.0
+  },
+  "sheath": {
+    "CUI": "LOCAL_07284262",
+    "Name": "sheath",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "sheath"
+    ],
+    "Possibility": 1.0
+  },
+  "drains": {
+    "CUI": "LOCAL_88472903",
+    "Name": "drains",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "drains"
+    ],
+    "Possibility": 1.0
+  },
+  "volumes": {
+    "CUI": "LOCAL_67140897",
+    "Name": "volumes",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "volumes"
+    ],
+    "Possibility": 1.0
+  },
+  "examination": {
+    "CUI": "LOCAL_70463019",
+    "Name": "examination",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "examination"
+    ],
+    "Possibility": 1.0
+  },
+  "bibasilar": {
+    "CUI": "LOCAL_11553768",
+    "Name": "bibasilar",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "bibasilar"
+    ],
+    "Possibility": 1.0
+  },
+  "atelectasis": {
+    "CUI": "LOCAL_32453146",
+    "Name": "atelectasis",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "atelectasis"
+    ],
+    "Possibility": 1.0
+  },
+  "tissue": {
+    "CUI": "LOCAL_49613020",
+    "Name": "tissue",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "tissue"
+    ],
+    "Possibility": 1.0
+  },
+  "exam": {
+    "CUI": "LOCAL_39318445",
+    "Name": "exam",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "exam"
+    ],
+    "Possibility": 1.0
+  },
+  "particularly": {
+    "CUI": "LOCAL_86931025",
+    "Name": "particularly",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "particularly"
+    ],
+    "Possibility": 1.0
+  },
+  "vascular": {
+    "CUI": "LOCAL_21798656",
+    "Name": "vascular",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "vascular"
+    ],
+    "Possibility": 1.0
+  },
+  "congestion": {
+    "CUI": "LOCAL_18446319",
+    "Name": "congestion",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "congestion"
+    ],
+    "Possibility": 1.0
+  },
+  "prominence": {
+    "CUI": "LOCAL_07698930",
+    "Name": "prominence",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "prominence"
+    ],
+    "Possibility": 1.0
+  },
+  "main": {
+    "CUI": "LOCAL_84291121",
+    "Name": "main",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "main"
+    ],
+    "Possibility": 1.0
+  },
+  "artery": {
+    "CUI": "LOCAL_48537721",
+    "Name": "artery",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "artery"
+    ],
+    "Possibility": 1.0
+  },
+  "frank": {
+    "CUI": "LOCAL_42570768",
+    "Name": "frank",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "frank"
+    ],
+    "Possibility": 1.0
+  },
+  "1": {
+    "CUI": "LOCAL_32212985",
+    "Name": "1",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "1"
+    ],
+    "Possibility": 1.0
+  },
+  "cm": {
+    "CUI": "LOCAL_74405926",
+    "Name": "cm",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "cm"
+    ],
+    "Possibility": 1.0
+  },
+  "hila": {
+    "CUI": "LOCAL_92930144",
+    "Name": "hila",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "hila"
+    ],
+    "Possibility": 1.0
+  },
+  "stent": {
+    "CUI": "LOCAL_24689054",
+    "Name": "stent",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "stent"
+    ],
+    "Possibility": 1.0
+  },
+  "liver": {
+    "CUI": "LOCAL_26749096",
+    "Name": "liver",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "liver"
+    ],
+    "Possibility": 1.0
+  },
+  "coil": {
+    "CUI": "LOCAL_34109635",
+    "Name": "coil",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "coil"
+    ],
+    "Possibility": 1.0
+  },
+  "epigrastrium": {
+    "CUI": "LOCAL_21883308",
+    "Name": "epigrastrium",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "epigrastrium"
+    ],
+    "Possibility": 1.0
+  },
+  "remaining": {
+    "CUI": "LOCAL_26144836",
+    "Name": "remaining",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "remaining"
+    ],
+    "Possibility": 1.0
+  },
+  "tissues": {
+    "CUI": "LOCAL_73087741",
+    "Name": "tissues",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "tissues"
+    ],
+    "Possibility": 1.0
+  },
+  "ap": {
+    "CUI": "LOCAL_55501006",
+    "Name": "ap",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "ap"
+    ],
+    "Possibility": 1.0
+  },
+  "upright": {
+    "CUI": "LOCAL_25146010",
+    "Name": "upright",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "upright"
+    ],
+    "Possibility": 1.0
+  },
+  "sternal": {
+    "CUI": "LOCAL_70876072",
+    "Name": "sternal",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "sternal"
+    ],
+    "Possibility": 1.0
+  },
+  "significantly": {
+    "CUI": "LOCAL_36432253",
+    "Name": "significantly",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "significantly"
+    ],
+    "Possibility": 1.0
+  },
+  "changed": {
+    "CUI": "LOCAL_71384668",
+    "Name": "changed",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "changed"
+    ],
+    "Possibility": 1.0
+  },
+  "aorta": {
+    "CUI": "LOCAL_38748987",
+    "Name": "aorta",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "aorta"
+    ],
+    "Possibility": 1.0
+  },
+  "ectatic": {
+    "CUI": "LOCAL_46048355",
+    "Name": "ectatic",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "ectatic"
+    ],
+    "Possibility": 1.0
+  },
+  "tortuous": {
+    "CUI": "LOCAL_17416828",
+    "Name": "tortuous",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "tortuous"
+    ],
+    "Possibility": 1.0
+  },
+  "previous": {
+    "CUI": "LOCAL_29459777",
+    "Name": "previous",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "previous"
+    ],
+    "Possibility": 1.0
+  },
+  "vessels": {
+    "CUI": "LOCAL_75392624",
+    "Name": "vessels",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "vessels"
+    ],
+    "Possibility": 1.0
+  },
+  "prominent": {
+    "CUI": "LOCAL_87038428",
+    "Name": "prominent",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "prominent"
+    ],
+    "Possibility": 1.0
+  },
+  "suggesting": {
+    "CUI": "LOCAL_66414824",
+    "Name": "suggesting",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "suggesting"
+    ],
+    "Possibility": 1.0
+  },
+  "degree": {
+    "CUI": "LOCAL_00424916",
+    "Name": "degree",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "degree"
+    ],
+    "Possibility": 1.0
+  },
+  "costophrenic": {
+    "CUI": "LOCAL_80587559",
+    "Name": "costophrenic",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "costophrenic"
+    ],
+    "Possibility": 1.0
+  },
+  "sulci": {
+    "CUI": "LOCAL_57830398",
+    "Name": "sulci",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "sulci"
+    ],
+    "Possibility": 1.0
+  },
+  "sharp": {
+    "CUI": "LOCAL_86948052",
+    "Name": "sharp",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "sharp"
+    ],
+    "Possibility": 1.0
+  },
+  "pneumothorax": {
+    "CUI": "LOCAL_72899700",
+    "Name": "pneumothorax",
+    "Definition": "",
+    "TUI": [],
+    "Aliases": [
+      "pneumothorax"
+    ],
+    "Possibility": 1.0
+  }
+}
