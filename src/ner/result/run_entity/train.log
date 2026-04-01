@@ -1,0 +1,43 @@
+['run_entity.py', '--do_train', '--do_eval', '--eval_test', '--learning_rate=1e-5', '--task_learning_rate=5e-4', '--train_batch_size=8', '--eval_batch_size=64', '--num_epoch=1', '--context_window', '100', '--task', 'mimic01', '--data_dir', './data', '--train_data', './data/data_split/train.json', '--dev_data', './data/data_split/test.json', '--test_data', './data/data_split/test.json', '--model', 'bert-base-uncased', '--output_dir', './result/run_entity']
+Namespace(bert_model_dir=None, bertadam=False, context_window=100, data_dir='./data', dev_data='./data/data_split/test.json', dev_pred_filename='ent_pred_dev.json', do_aug=False, do_eval=True, do_train=True, eval_batch_size=64, eval_per_epoch=1, eval_test=True, learning_rate=1e-05, max_span_length=8, model='bert-base-uncased', num_epoch=1, output_dir='./result/run_entity', print_loss_step=100, seed=0, task='mimic01', task_learning_rate=0.0005, test_data='./data/data_split/test.json', test_pred_filename='ent_pred_mimic_headct.json', train_batch_size=8, train_data='./data/data_split/train.json', train_shuffle=False, use_albert=False, warmup_proportion=0.1)
+# Overlap: 0
+Extracted 560 samples from 560 documents, with 3699 NER labels, 13.125 avg input length, 76 max length
+Max Length: 76, max NER: 32
+Long sentence: {'doc_key': '60', 'sentence_ix': 0} 126
+Long sentence: {'doc_key': '380', 'sentence_ix': 0} 128
+Long sentence: {'doc_key': '1239', 'sentence_ix': 0} 117
+Long sentence: {'doc_key': '1684', 'sentence_ix': 0} 115
+Long sentence: {'doc_key': '1690', 'sentence_ix': 0} 115
+Long sentence: {'doc_key': '2879', 'sentence_ix': 0} 106
+Long sentence: {'doc_key': '3510', 'sentence_ix': 0} 103
+Long sentence: {'doc_key': '4315', 'sentence_ix': 0} 102
+Long sentence: {'doc_key': '4387', 'sentence_ix': 0} 123
+Long sentence: {'doc_key': '4389', 'sentence_ix': 0} 123
+# Overlap: 0
+Extracted 5086 samples from 5086 documents, with 32768 NER labels, 13.307 avg input length, 128 max length
+Max Length: 128, max NER: 63
+eval_step=636, train_batches=636, eval_per_epoch=1
+Epoch=0, iter=99, loss=88.03208
+Epoch=0, iter=199, loss=20.61894
+Epoch=0, iter=299, loss=12.18854
+Epoch=0, iter=399, loss=9.50147
+Epoch=0, iter=499, loss=7.44033
+Epoch=0, iter=599, loss=7.30135
+Evaluating...
+Accuracy: 0.975647
+Cor: 2839, Pred TOT: 3684, Gold TOT: 3699
+P: 0.77063, R: 0.76750, F1: 0.76906
+Used time: 13.453428
+!!! Best valid (epoch=0): 76.91
+Saving model to ./result/run_entity...
+Loading BERT model from ./result/run_entity/
+# Overlap: 0
+Extracted 560 samples from 560 documents, with 3699 NER labels, 13.125 avg input length, 76 max length
+Max Length: 76, max NER: 32
+Evaluating...
+Accuracy: 0.975647
+Cor: 2839, Pred TOT: 3684, Gold TOT: 3699
+P: 0.77063, R: 0.76750, F1: 0.76906
+Used time: 15.430279
+Total pred entities: 3684
+Output predictions to ./result/run_entity/ent_pred_mimic_headct.json..

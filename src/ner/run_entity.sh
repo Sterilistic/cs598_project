@@ -4,6 +4,11 @@ OUTPUT_DIR=${OUTPUT_DIR:-./result/run_entity}
 TRAIN_DATA=${TRAIN_DATA:-./data/data_split/train.json}
 DEV_DATA=${DEV_DATA:-./data/data_split/test.json}
 TEST_DATA=${TEST_DATA:-./data/data_split/test.json}
+FORCE_CPU=${FORCE_CPU:-1}
+
+if [ "$FORCE_CPU" = "1" ]; then
+    export CUDA_VISIBLE_DEVICES=""
+fi
 
 "$PYTHON_BIN" run_entity.py \
     --do_train \

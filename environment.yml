@@ -1,7 +1,7 @@
 name: allennlp_env
 channels:
-  - http://pkg.pjlab.org.cn/repository/conda-tsinghua-cloud/conda-forge
-  - http://pkg.pjlab.org.cn/repository/conda-tsinghua-main
+  - https://conda.anaconda.org/conda-forge
+  # - https://pkg.pjlab.org.cn/repository/conda-tsinghua-main
   - pytorch
   - defaults
   - nvidia
@@ -188,9 +188,9 @@ dependencies:
     - tinycss2==1.2.1
     - tokenizers==0.9.4
     - tomli==2.0.1
-    - torch==1.8.1+cu111
+    - torch==1.8.1
     - torchaudio==0.8.1
-    - torchvision==0.9.1+cu111
+    - torchvision==0.9.1
     - tornado==6.4
     - tqdm==4.66.1
     - traitlets==5.14.0
@@ -210,4 +210,5 @@ dependencies:
     - widgetsnbextension==4.0.9
     - word2number==1.1
     - zipp==3.17.0
+    - openai==0.10.2
 prefix: /home/xiz569/.conda/envs/allennlp_env

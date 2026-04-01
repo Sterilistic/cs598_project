@@ -204,7 +204,8 @@ class EntityModel():
             self.bert_model = BertForEntity.from_pretrained(bert_model_name, num_ner_labels=num_ner_labels, max_span_length=args.max_span_length)
 
         self._model_device = 'cpu'
-        self.move_model_to_cuda()
+        # CPU-only run: keep model on CPU and do not auto-move to CUDA.
+        # self.move_model_to_cuda()
 
     def move_model_to_cuda(self):
         if not torch.cuda.is_available():
