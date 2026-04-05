@@ -13,3 +13,4 @@ df_chexpert_plus_240401.csv
 src/ner/result/**/pytorch_model.bin
 PyHealth/df_chexpert_plus_240401.csv
 
+src/ner/result/run_entity/model.safetensors 
