@@ -10,11 +10,33 @@ from shared.data_structures import Dataset
 logger = logging.getLogger('root')
 
 def decode_sample_id(sample_id):
-    doc_sent = sample_id.split('::')[0]
-    pair = sample_id.split('::')[1]
-    pair = pair.split('-')
-    sub = (int(pair[0][1:-1].split(',')[0]), int(pair[0][1:-1].split(',')[1]))
-    obj = (int(pair[1][1:-1].split(',')[0]), int(pair[1][1:-1].split(',')[1]))
+    def _parse_span(span_text):
+        span_text = span_text.strip()
+        if not (span_text.startswith('(') and span_text.endswith(')')):
+            raise ValueError("Invalid span format: %s" % span_text)
+        vals = span_text[1:-1].split(',')
+        if len(vals) != 2:
+            raise ValueError("Invalid span coordinates: %s" % span_text)
+        return (int(vals[0]), int(vals[1]))
+
+    try:
+        doc_sent, pair = sample_id.split('::', 1)
+    except ValueError:
+        raise ValueError("Invalid sample id (missing '::'): %s" % sample_id)
+
+    # Use the explicit boundary between subject/object spans to safely handle
+    # negative indices such as (-1,-1).
+    if ')-(' in pair:
+        left, right = pair.split(')-(', 1)
+        sub = _parse_span(left + ')')
+        obj = _parse_span('(' + right)
+    else:
+        # Backward-compatible fallback for unexpected legacy formatting.
+        pair_parts = pair.split('-', 1)
+        if len(pair_parts) != 2:
+            raise ValueError("Invalid sample id (missing span separator '-'): %s" % sample_id)
+        sub = _parse_span(pair_parts[0])
+        obj = _parse_span(pair_parts[1])
 
     return doc_sent, sub, obj
 

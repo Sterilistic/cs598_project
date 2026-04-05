@@ -159,10 +159,9 @@ def convert_examples_to_features(examples, label2id, max_seq_length, tokenizer, 
                               label_id=label_id,
                               sub_idx=sub_idx,
                               obj_idx=obj_idx))
-    logger.info("Average #tokens: %.2f" % (num_tokens * 1.0 / len(examples)))
-    logger.info("Max #tokens: %d"%max_tokens)
-    logger.info("%d (%.2f %%) examples can fit max_seq_length = %d" % (num_fit_examples,
-                num_fit_examples * 100.0 / len(examples), max_seq_length))
+    # logger.info("Average #tokens: %.2f" % (num_tokens * 1.0 / len(examples)))
+    # logger.info("Max #tokens: %d"%max_tokens)
+    # logger.info("%d (%.2f %%) examples can fit max_seq_length = %d" % (num_fit_examples, num_fit_examples * 100.0 / len(examples), max_seq_length))
     return features
 
 def simple_accuracy(preds, labels):
