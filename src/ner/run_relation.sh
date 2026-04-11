@@ -23,5 +23,4 @@ ENTITY_PRED_TEST=${ENTITY_PRED_TEST:-ent_pred_mimic_headct.json}
     --num_train_epochs 1 \
     --context_window 100 \
     --max_seq_length 256 \
-    --no_cuda \
     --output_dir "$OUTPUT_DIR"

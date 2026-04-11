@@ -33,7 +33,6 @@ RELATION_TEST_PRED=${RELATION_TEST_PRED:-ent_rel_pred_test.json}
     --num_train_epochs 1 \
     --context_window 100 \
     --max_seq_length 256 \
-    --no_cuda \
     --entity_output_dir "$ENTITY_OUTPUT_DIR" \
     --entity_predictions_test "$ENTITY_TEST_PRED" \
     --output_dir "$RELATION_OUTPUT_DIR" \
