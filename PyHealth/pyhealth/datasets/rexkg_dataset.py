@@ -1,5 +1,4 @@
 import logging
-import os
 from pathlib import Path
 from typing import Optional
 
@@ -14,28 +13,16 @@ logger = logging.getLogger(__name__)
 class RexKGDataset(BaseDataset):
     """Dataset wrapper for ReXKG radiology report extraction.
 
-    This dataset standardizes CheXpert Plus style radiology report metadata into a
-    single PyHealth event table named ``radiology_reports`` so the RexKG tasks can
-    consume it directly.
-
-    The wrapper is intentionally lightweight: each row in the source CSV becomes a
-    single report-level event with text fields and identifiers preserved as event
-    attributes. The expected raw input is the CheXpert Plus metadata CSV used by the
-    original ReXKG pipeline, typically ``df_chexpert_plus_240401.csv``.
-
     Args:
-        root: Directory containing the raw ReXKG/CheXpert Plus CSV.
+        root:
+            Either:
+            1) absolute/relative path to a source CSV file, or
+            2) directory containing a prebuilt ``rexkg-pyhealth.csv``.
         dataset_name: Optional dataset name. Defaults to ``"rexkg"``.
-        config_path: Optional custom config path. Defaults to the bundled
-            ``configs/rexkg_dataset.yaml``.
+        config_path: Optional custom config path. Defaults to bundled config.
         cache_dir: Optional directory for cached PyHealth artifacts.
-        num_workers: Number of workers used by PyHealth preprocessing.
+        num_workers: Number of workers used by preprocessing.
         dev: Whether to enable PyHealth dev mode.
-
-    Examples:
-        >>> from pyhealth.datasets import RexKGDataset
-        >>> dataset = RexKGDataset(root="/path/to/rexkg_data")
-        >>> task_dataset = dataset.set_task()
     """
 
     def __init__(
@@ -51,12 +38,26 @@ class RexKGDataset(BaseDataset):
             logger.info("No config path provided, using default RexKG config")
             config_path = Path(__file__).parent / "configs" / "rexkg_dataset.yaml"
 
-        prepared_csv = os.path.join(root, "rexkg-pyhealth.csv")
-        if not os.path.exists(prepared_csv):
-            self.prepare_metadata(root)
+        input_path = Path(root).expanduser().resolve()
+
+        if input_path.is_file():
+            data_dir = input_path.parent
+            source_csv = input_path
+        else:
+            data_dir = input_path
+            source_csv = None
+
+        prepared_csv = data_dir / "rexkg-pyhealth.csv"
+        if not prepared_csv.exists():
+            if source_csv is None:
+                raise FileNotFoundError(
+                    f"Missing prepared file: {prepared_csv}. "
+                    f"Pass `root` as a CSV filepath to auto-prepare metadata."
+                )
+            self.prepare_metadata(root=str(data_dir), source_csv=str(source_csv))
 
         super().__init__(
-            root=root,
+            root=str(data_dir),
             tables=["radiology_reports"],
             dataset_name=dataset_name or "rexkg",
             config_path=config_path,
@@ -66,35 +67,21 @@ class RexKGDataset(BaseDataset):
         )
 
     @staticmethod
-    def prepare_metadata(root: str) -> None:
-        """Prepare a standardized report-level CSV for PyHealth.
-
-        The method looks for the raw CheXpert Plus CSV used by ReXKG and writes a
-        simplified ``rexkg-pyhealth.csv`` file that matches the bundled dataset config.
+    def prepare_metadata(root: str, source_csv: str) -> None:
+        """Prepare standardized report-level CSV for PyHealth.
 
         Args:
-            root: Directory containing raw ReXKG input CSV files.
+            root: Directory where output ``rexkg-pyhealth.csv`` will be written.
+            source_csv: Explicit source CSV file path.
 
         Raises:
-            FileNotFoundError: If a supported raw CSV cannot be found.
+            FileNotFoundError: If source CSV does not exist.
         """
-        possible_files = [
-            "df_chexpert_plus_240401.csv",
-            "chexpert_plus.csv",
-            "df_chexpert_plus_onlyfindings.csv",
-        ]
+        root_path = Path(root).expanduser().resolve()
+        raw_file = Path(source_csv).expanduser().resolve()
 
-        raw_file = None
-        for file_name in possible_files:
-            candidate = os.path.join(root, file_name)
-            if os.path.exists(candidate):
-                raw_file = candidate
-                break
-
-        if raw_file is None:
-            raise FileNotFoundError(
-                f"No ReXKG source CSV found in {root}. Expected one of: {possible_files}"
-            )
+        if not raw_file.exists() or not raw_file.is_file():
+            raise FileNotFoundError(f"Provided source CSV does not exist: {raw_file}")
 
         df = pd.read_csv(raw_file)
 
@@ -107,37 +94,32 @@ class RexKGDataset(BaseDataset):
             )
 
         output = pd.DataFrame()
-        if "deid_patient_id" in df.columns:
-            output["patient_id"] = df["deid_patient_id"].astype(str)
-        else:
-            output["patient_id"] = [f"report_patient_{idx}" for idx in range(len(df))]
+        output["patient_id"] = (
+            df["deid_patient_id"].astype(str)
+            if "deid_patient_id" in df.columns
+            else [f"report_patient_{idx}" for idx in range(len(df))]
+        )
 
-        if "study_id" in df.columns:
-            output["study_id"] = df["study_id"].astype(str)
-        elif "path_to_image" in df.columns:
-            output["study_id"] = df["path_to_image"].astype(str)
-        else:
-            output["study_id"] = [f"study_{idx}" for idx in range(len(df))]
+        output["study_id"] = (
+            df["study_id"].astype(str)
+            if "study_id" in df.columns
+            else df["path_to_image"].astype(str)
+            if "path_to_image" in df.columns
+            else [f"study_{idx}" for idx in range(len(df))]
+        )
 
         output["report_id"] = [f"rexkg_report_{idx}" for idx in range(len(df))]
         output["text"] = df[text_column].fillna("").astype(str)
         output["report_type"] = "RADIOLOGY"
 
-        optional_columns = {
-            "path_to_image": "",
-            "split": "",
-            "section_findings": "",
-            "section_impression": "",
-            "report": "",
-        }
-        for column_name, default_value in optional_columns.items():
-            if column_name in df.columns:
-                output[column_name] = df[column_name].fillna(default_value).astype(str)
-            else:
-                output[column_name] = default_value
+        optional_columns = ["path_to_image", "split", "section_findings", "section_impression", "report"]
+        for column_name in optional_columns:
+            output[column_name] = (
+                df[column_name].fillna("").astype(str) if column_name in df.columns else ""
+            )
 
         output = output[output["text"].str.strip() != ""].reset_index(drop=True)
-        output.to_csv(os.path.join(root, "rexkg-pyhealth.csv"), index=False)
+        output.to_csv(root_path / "rexkg-pyhealth.csv", index=False)
 
     @property
     def default_task(self) -> RexKGEntityExtractionRadiology:
