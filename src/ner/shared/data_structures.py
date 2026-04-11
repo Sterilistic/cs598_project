@@ -9,8 +9,16 @@ from collections import Counter
 import numpy as np
 import pandas as pd 
 
-from neraug.augmentator import DictionaryReplacement,LabelWiseTokenReplacement
-from neraug.scheme import IOBES
+# `neraug` is only needed for optional augmentation experiments.
+# The normal training/inference pipeline should still run when it is absent
+# (e.g. in a minimal Colab environment).
+try:
+    from neraug.augmentator import DictionaryReplacement, LabelWiseTokenReplacement
+    from neraug.scheme import IOBES
+except ImportError:
+    DictionaryReplacement = None
+    LabelWiseTokenReplacement = None
+    IOBES = None
 
 import torch
 from torch.utils.data import DataLoader, TensorDataset

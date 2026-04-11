@@ -11,10 +11,19 @@ logger = logging.getLogger('root')
 
 def decode_sample_id(sample_id):
     doc_sent = sample_id.split('::')[0]
-    pair = sample_id.split('::')[1]
-    pair = pair.split('-')
-    sub = (int(pair[0][1:-1].split(',')[0]), int(pair[0][1:-1].split(',')[1]))
-    obj = (int(pair[1][1:-1].split(',')[0]), int(pair[1][1:-1].split(',')[1]))
+    pair_str = sample_id.split('::')[1]
+    
+    # Robust parsing: find the two parenthesis pairs
+    # Expected format: (0,5)-(10,15)
+    import re
+    coords = re.findall(r'\((-?\d+),(-?\d+)\)', pair_str)
+    if len(coords) < 2:
+        logger.warning(f"Could not parse sample_id: {sample_id}, using (0,0) fallback")
+        sub = (0, 0)
+        obj = (0, 0)
+    else:
+        sub = (int(coords[0][0]), int(coords[0][1]))
+        obj = (int(coords[1][0]), int(coords[1][1]))
 
     return doc_sent, sub, obj
 
