@@ -1,0 +1,16 @@
+version: "1.0"
+tables:
+  radiology_reports:
+    file_path: "rexkg-pyhealth.csv"
+    patient_id: "patient_id"
+    timestamp: null
+    attributes:
+      - "study_id"
+      - "report_id"
+      - "text"
+      - "report_type"
+      - "path_to_image"
+      - "split"
+      - "section_findings"
+      - "section_impression"
+      - "report"
