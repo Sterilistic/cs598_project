@@ -1,0 +1,2081 @@
+[
+    {
+        "doc_key": "0",
+        "sentences": "unchanged position of the left upper extremity picc line .",
+        "entities": {
+            "unchanged": "concept",
+            "position": "concept",
+            "left": "concept",
+            "upper": "concept",
+            "extremity": "anatomy",
+            "picc": "devices_present",
+            "line": "devices_present"
+        },
+        "relations": [
+            {
+                "source_entity": "unchanged",
+                "target_entity": "position",
+                "type": "modify"
+            },
+            {
+                "source_entity": "left",
+                "target_entity": "extremity",
+                "type": "modify"
+            },
+            {
+                "source_entity": "upper",
+                "target_entity": "extremity",
+                "type": "modify"
+            },
+            {
+                "source_entity": "picc line",
+                "target_entity": "extremity",
+                "type": "located_at"
+            }
+        ]
+    },
+    {
+        "doc_key": "1",
+        "sentences": "again seen are surgical clips projecting over the right hemithorax .",
+        "entities": {
+            "surgical": "concept",
+            "clips": "devices_present",
+            "right": "concept",
+            "hemithorax": "anatomy"
+        },
+        "relations": [
+            {
+                "source_entity": "surgical",
+                "target_entity": "clips",
+                "type": "modify"
+            },
+            {
+                "source_entity": "right",
+                "target_entity": "hemithorax",
+                "type": "modify"
+            },
+            {
+                "source_entity": "clips",
+                "target_entity": "hemithorax",
+                "type": "located_at"
+            }
+        ]
+    },
+    {
+        "doc_key": "2",
+        "sentences": "the cardiomediastinal silhouette is stable in appearance .",
+        "entities": {
+            "cardiomediastinal": "anatomy",
+            "silhouette": "anatomy",
+            "stable": "concept",
+            "appearance": "concept"
+        },
+        "relations": [
+            {
+                "source_entity": "stable",
+                "target_entity": "silhouette",
+                "type": "modify"
+            },
+            {
+                "source_entity": "appearance",
+                "target_entity": "silhouette",
+                "type": "modify"
+            },
+            {
+                "source_entity": "cardiomediastinal",
+                "target_entity": "silhouette",
+                "type": "located_at"
+            }
+        ]
+    },
+    {
+        "doc_key": "3",
+        "sentences": "increased stranding opacities are noted in the left retrocardiac region .",
+        "entities": {
+            "increased": "concept",
+            "stranding": "concept",
+            "opacities": "disorder_present",
+            "left": "concept",
+            "retrocardiac": "anatomy",
+            "region": "anatomy"
+        },
+        "relations": [
+            {
+                "source_entity": "increased",
+                "target_entity": "stranding",
+                "type": "modify"
+            },
+            {
+                "source_entity": "stranding",
+                "target_entity": "opacities",
+                "type": "modify"
+            },
+            {
+                "source_entity": "left",
+                "target_entity": "retrocardiac",
+                "type": "modify"
+            },
+            {
+                "source_entity": "opacities",
+                "target_entity": "region",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "retrocardiac",
+                "target_entity": "region",
+                "type": "located_at"
+            }
+        ]
+    },
+    {
+        "doc_key": "4",
+        "sentences": "subtle stranding opacities in the right upper lung zone are unchanged . .",
+        "entities": {
+            "subtle": "concept",
+            "stranding": "concept",
+            "opacities": "disorder_present",
+            "right": "concept",
+            "upper": "concept",
+            "lung": "anatomy",
+            "zone": "anatomy",
+            "unchanged": "concept"
+        },
+        "relations": [
+            {
+                "source_entity": "subtle",
+                "target_entity": "stranding",
+                "type": "modify"
+            },
+            {
+                "source_entity": "stranding",
+                "target_entity": "opacities",
+                "type": "modify"
+            },
+            {
+                "source_entity": "right",
+                "target_entity": "lung",
+                "type": "modify"
+            },
+            {
+                "source_entity": "upper",
+                "target_entity": "lung",
+                "type": "modify"
+            },
+            {
+                "source_entity": "opacities",
+                "target_entity": "zone",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "unchanged",
+                "target_entity": "opacities",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "5",
+        "sentences": "there are no pleural or significant bony abnormalities .",
+        "entities": {
+            "pleural": "anatomy",
+            "significant": "concept",
+            "bony": "anatomy",
+            "abnormalities": "disorder_notpresent"
+        },
+        "relations": [
+            {
+                "source_entity": "significant",
+                "target_entity": "abnormalities",
+                "type": "modify"
+            },
+            {
+                "source_entity": "abnormalities",
+                "target_entity": "bony",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "abnormalities",
+                "target_entity": "pleural",
+                "type": "located_at"
+            }
+        ]
+    },
+    {
+        "doc_key": "6",
+        "sentences": "absence of the right breast shadow compatible with prior mastectomy .",
+        "entities": {
+            "absence": "disorder_notpresent",
+            "right": "concept",
+            "breast": "anatomy",
+            "shadow": "anatomy",
+            "prior": "concept",
+            "mastectomy": "procedures"
+        },
+        "relations": [
+            {
+                "source_entity": "right",
+                "target_entity": "breast",
+                "type": "modify"
+            },
+            {
+                "source_entity": "absence",
+                "target_entity": "shadow",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "mastectomy",
+                "target_entity": "absence",
+                "type": "suggestive_of"
+            },
+            {
+                "source_entity": "prior",
+                "target_entity": "mastectomy",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "7",
+        "sentences": "unchanged position of the left upper extremity picc line .",
+        "entities": {
+            "unchanged": "concept",
+            "position": "concept",
+            "left": "concept",
+            "upper": "concept",
+            "extremity": "anatomy",
+            "picc line": "devices_present"
+        },
+        "relations": [
+            {
+                "source_entity": "unchanged",
+                "target_entity": "position",
+                "type": "modify"
+            },
+            {
+                "source_entity": "left",
+                "target_entity": "upper",
+                "type": "modify"
+            },
+            {
+                "source_entity": "upper",
+                "target_entity": "extremity",
+                "type": "modify"
+            },
+            {
+                "source_entity": "extremity",
+                "target_entity": "picc line",
+                "type": "located_at"
+            }
+        ]
+    },
+    {
+        "doc_key": "8",
+        "sentences": "again seen are surgical clips projecting over the right hemithorax .",
+        "entities": {
+            "surgical": "concept",
+            "clips": "devices_present",
+            "right": "concept",
+            "hemithorax": "anatomy"
+        },
+        "relations": [
+            {
+                "source_entity": "surgical",
+                "target_entity": "clips",
+                "type": "modify"
+            },
+            {
+                "source_entity": "clips",
+                "target_entity": "hemithorax",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "right",
+                "target_entity": "hemithorax",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "9",
+        "sentences": "the cardiomediastinal silhouette is stable in appearance .",
+        "entities": {
+            "cardiomediastinal": "anatomy",
+            "silhouette": "concept",
+            "stable": "concept",
+            "appearance": "concept"
+        },
+        "relations": [
+            {
+                "source_entity": "cardiomediastinal",
+                "target_entity": "silhouette",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "silhouette",
+                "target_entity": "appearance",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "stable",
+                "target_entity": "appearance",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "10",
+        "sentences": "increased stranding opacities are noted in the left retrocardiac region .",
+        "entities": {
+            "increased": "concept",
+            "stranding": "concept",
+            "opacities": "disorder_present",
+            "left": "concept",
+            "retrocardiac": "anatomy",
+            "region": "anatomy"
+        },
+        "relations": [
+            {
+                "source_entity": "increased",
+                "target_entity": "stranding",
+                "type": "modify"
+            },
+            {
+                "source_entity": "stranding",
+                "target_entity": "opacities",
+                "type": "modify"
+            },
+            {
+                "source_entity": "opacities",
+                "target_entity": "region",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "left",
+                "target_entity": "retrocardiac",
+                "type": "modify"
+            },
+            {
+                "source_entity": "retrocardiac",
+                "target_entity": "region",
+                "type": "located_at"
+            }
+        ]
+    },
+    {
+        "doc_key": "11",
+        "sentences": "subtle stranding opacities in the right upper lung zone are unchanged .",
+        "entities": {
+            "subtle": "concept",
+            "stranding": "concept",
+            "opacities": "disorder_present",
+            "right": "concept",
+            "upper": "concept",
+            "lung": "anatomy",
+            "zone": "anatomy",
+            "unchanged": "concept"
+        },
+        "relations": [
+            {
+                "source_entity": "subtle",
+                "target_entity": "stranding",
+                "type": "modify"
+            },
+            {
+                "source_entity": "stranding",
+                "target_entity": "opacities",
+                "type": "modify"
+            },
+            {
+                "source_entity": "opacities",
+                "target_entity": "zone",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "right",
+                "target_entity": "upper",
+                "type": "modify"
+            },
+            {
+                "source_entity": "upper",
+                "target_entity": "lung",
+                "type": "modify"
+            },
+            {
+                "source_entity": "lung",
+                "target_entity": "zone",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "unchanged",
+                "target_entity": "opacities",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "12",
+        "sentences": "there are no pleural or significant bony abnormalities .",
+        "entities": {
+            "pleural": "anatomy",
+            "significant": "concept",
+            "bony": "anatomy",
+            "abnormalities": "disorder_notpresent"
+        },
+        "relations": [
+            {
+                "source_entity": "pleural",
+                "target_entity": "abnormalities",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "significant",
+                "target_entity": "abnormalities",
+                "type": "modify"
+            },
+            {
+                "source_entity": "bony",
+                "target_entity": "abnormalities",
+                "type": "located_at"
+            }
+        ]
+    },
+    {
+        "doc_key": "13",
+        "sentences": "absence of the right breast shadow compatible with prior mastectomy .",
+        "entities": {
+            "absence": "disorder_notpresent",
+            "right": "concept",
+            "breast": "anatomy",
+            "shadow": "anatomy",
+            "compatible": "concept",
+            "prior": "concept",
+            "mastectomy": "procedures"
+        },
+        "relations": [
+            {
+                "source_entity": "absence",
+                "target_entity": "breast",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "right",
+                "target_entity": "breast",
+                "type": "modify"
+            },
+            {
+                "source_entity": "breast",
+                "target_entity": "shadow",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "compatible",
+                "target_entity": "mastectomy",
+                "type": "suggestive_of"
+            },
+            {
+                "source_entity": "prior",
+                "target_entity": "mastectomy",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "14",
+        "sentences": "there is redemonstration of right internal jugular central venous line , right internal jugular sheath , two mediastinal drains , sternotomy wires , and mediastinal surgical clips .",
+        "entities": {
+            "redemonstration": "concept",
+            "right": "concept",
+            "internal": "concept",
+            "jugular": "anatomy",
+            "central": "concept",
+            "venous": "concept",
+            "line": "devices_present",
+            "sheath": "devices_present",
+            "two": "concept",
+            "mediastinal": "anatomy",
+            "drains": "devices_present",
+            "sternotomy": "concept",
+            "wires": "devices_present",
+            "surgical": "concept",
+            "clips": "devices_present"
+        },
+        "relations": [
+            {
+                "source_entity": "redemonstration",
+                "target_entity": "line",
+                "type": "modify"
+            },
+            {
+                "source_entity": "right",
+                "target_entity": "jugular",
+                "type": "modify"
+            },
+            {
+                "source_entity": "internal",
+                "target_entity": "jugular",
+                "type": "modify"
+            },
+            {
+                "source_entity": "central",
+                "target_entity": "venous",
+                "type": "modify"
+            },
+            {
+                "source_entity": "venous",
+                "target_entity": "line",
+                "type": "modify"
+            },
+            {
+                "source_entity": "line",
+                "target_entity": "jugular",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "sheath",
+                "target_entity": "jugular",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "mediastinal",
+                "target_entity": "drains",
+                "type": "modify"
+            },
+            {
+                "source_entity": "two",
+                "target_entity": "drains",
+                "type": "modify"
+            },
+            {
+                "source_entity": "sternotomy",
+                "target_entity": "wires",
+                "type": "modify"
+            },
+            {
+                "source_entity": "mediastinal",
+                "target_entity": "surgical",
+                "type": "modify"
+            },
+            {
+                "source_entity": "surgical",
+                "target_entity": "clips",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "15",
+        "sentences": "lung volumes have increased compared with the prior examination .",
+        "entities": {
+            "lung": "anatomy",
+            "volumes": "concept",
+            "increased": "concept",
+            "prior": "concept",
+            "examination": "procedures"
+        },
+        "relations": [
+            {
+                "source_entity": "lung",
+                "target_entity": "volumes",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "volumes",
+                "target_entity": "increased",
+                "type": "modify"
+            },
+            {
+                "source_entity": "increased",
+                "target_entity": "volumes",
+                "type": "modify"
+            },
+            {
+                "source_entity": "prior",
+                "target_entity": "examination",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "16",
+        "sentences": "there is decreased pulmonary edema and decreased bibasilar atelectasis .",
+        "entities": {
+            "decreased": "concept",
+            "pulmonary": "anatomy",
+            "edema": "disorder_notpresent",
+            "bibasilar": "concept",
+            "atelectasis": "disorder_notpresent"
+        },
+        "relations": [
+            {
+                "source_entity": "decreased",
+                "target_entity": "edema",
+                "type": "modify"
+            },
+            {
+                "source_entity": "edema",
+                "target_entity": "pulmonary",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "decreased",
+                "target_entity": "atelectasis",
+                "type": "modify"
+            },
+            {
+                "source_entity": "bibasilar",
+                "target_entity": "atelectasis",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "17",
+        "sentences": "small bilateral effusions persist .",
+        "entities": {
+            "small": "concept",
+            "bilateral": "concept",
+            "effusions": "disorder_present"
+        },
+        "relations": [
+            {
+                "source_entity": "small",
+                "target_entity": "effusions",
+                "type": "modify"
+            },
+            {
+                "source_entity": "bilateral",
+                "target_entity": "effusions",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "18",
+        "sentences": "there is also decreased soft tissue edema .",
+        "entities": {
+            "decreased": "concept",
+            "soft": "concept",
+            "tissue": "anatomy",
+            "edema": "disorder_notpresent"
+        },
+        "relations": [
+            {
+                "source_entity": "decreased",
+                "target_entity": "edema",
+                "type": "modify"
+            },
+            {
+                "source_entity": "soft",
+                "target_entity": "tissue",
+                "type": "modify"
+            },
+            {
+                "source_entity": "edema",
+                "target_entity": "tissue",
+                "type": "located_at"
+            }
+        ]
+    },
+    {
+        "doc_key": "19",
+        "sentences": "persistent small bilateral pleural effusions .",
+        "entities": {
+            "persistent": "concept",
+            "small": "concept",
+            "bilateral": "concept",
+            "pleural": "anatomy",
+            "effusions": "disorder_present"
+        },
+        "relations": [
+            {
+                "source_entity": "persistent",
+                "target_entity": "effusions",
+                "type": "modify"
+            },
+            {
+                "source_entity": "small",
+                "target_entity": "effusions",
+                "type": "modify"
+            },
+            {
+                "source_entity": "bilateral",
+                "target_entity": "effusions",
+                "type": "modify"
+            },
+            {
+                "source_entity": "effusions",
+                "target_entity": "pleural",
+                "type": "located_at"
+            }
+        ]
+    },
+    {
+        "doc_key": "20",
+        "sentences": "the left effusion is slightly greater when compared to the prior exam .",
+        "entities": {
+            "left": "concept",
+            "effusion": "disorder_present",
+            "slightly": "concept",
+            "greater": "concept",
+            "prior": "concept",
+            "exam": "procedures"
+        },
+        "relations": [
+            {
+                "source_entity": "left",
+                "target_entity": "effusion",
+                "type": "modify"
+            },
+            {
+                "source_entity": "slightly",
+                "target_entity": "greater",
+                "type": "modify"
+            },
+            {
+                "source_entity": "greater",
+                "target_entity": "effusion",
+                "type": "modify"
+            },
+            {
+                "source_entity": "prior",
+                "target_entity": "exam",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "21",
+        "sentences": "lungs are clear .",
+        "entities": {
+            "lungs": "anatomy",
+            "clear": "concept"
+        },
+        "relations": [
+            {
+                "source_entity": "clear",
+                "target_entity": "lungs",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "22",
+        "sentences": "stable cardiomediastinal silhouette .",
+        "entities": {
+            "stable": "concept",
+            "cardiomediastinal": "anatomy",
+            "silhouette": "concept"
+        },
+        "relations": [
+            {
+                "source_entity": "stable",
+                "target_entity": "cardiomediastinal",
+                "type": "modify"
+            },
+            {
+                "source_entity": "cardiomediastinal",
+                "target_entity": "silhouette",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "23",
+        "sentences": "calcifications are again seen in the right suprahilar region , which may represent calcified lymph nodes or post surgical change .",
+        "entities": {
+            "calcifications": "disorder_present",
+            "right": "concept",
+            "suprahilar": "anatomy",
+            "region": "anatomy",
+            "calcified": "concept",
+            "lymph": "anatomy",
+            "nodes": "anatomy",
+            "post": "concept",
+            "surgical": "concept",
+            "change": "disorder_present"
+        },
+        "relations": [
+            {
+                "source_entity": "calcifications",
+                "target_entity": "suprahilar",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "right",
+                "target_entity": "suprahilar",
+                "type": "modify"
+            },
+            {
+                "source_entity": "suprahilar",
+                "target_entity": "region",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "calcified",
+                "target_entity": "nodes",
+                "type": "modify"
+            },
+            {
+                "source_entity": "lymph",
+                "target_entity": "nodes",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "post",
+                "target_entity": "change",
+                "type": "modify"
+            },
+            {
+                "source_entity": "surgical",
+                "target_entity": "change",
+                "type": "modify"
+            },
+            {
+                "source_entity": "calcifications",
+                "target_entity": "lymph nodes",
+                "type": "suggestive_of"
+            },
+            {
+                "source_entity": "calcifications",
+                "target_entity": "post surgical change",
+                "type": "suggestive_of"
+            }
+        ]
+    },
+    {
+        "doc_key": "24",
+        "sentences": "bones are stable with mild degenerative changes of the spine .",
+        "entities": {
+            "bones": "anatomy",
+            "stable": "concept",
+            "mild": "concept",
+            "degenerative": "disorder_present",
+            "changes": "disorder_present",
+            "spine": "anatomy"
+        },
+        "relations": [
+            {
+                "source_entity": "stable",
+                "target_entity": "bones",
+                "type": "modify"
+            },
+            {
+                "source_entity": "mild",
+                "target_entity": "degenerative",
+                "type": "modify"
+            },
+            {
+                "source_entity": "degenerative",
+                "target_entity": "changes",
+                "type": "modify"
+            },
+            {
+                "source_entity": "changes",
+                "target_entity": "spine",
+                "type": "located_at"
+            }
+        ]
+    },
+    {
+        "doc_key": "25",
+        "sentences": "sternotomy wires are unchanged .",
+        "entities": {
+            "sternotomy": "procedures",
+            "wires": "devices_present",
+            "unchanged": "concept"
+        },
+        "relations": [
+            {
+                "source_entity": "unchanged",
+                "target_entity": "wires",
+                "type": "modify"
+            },
+            {
+                "source_entity": "sternotomy",
+                "target_entity": "wires",
+                "type": "located_at"
+            }
+        ]
+    },
+    {
+        "doc_key": "26",
+        "sentences": "persistent small bilateral pleural effusions .",
+        "entities": {
+            "persistent": "concept",
+            "small": "concept",
+            "bilateral": "concept",
+            "pleural": "anatomy",
+            "effusions": "disorder_present"
+        },
+        "relations": [
+            {
+                "source_entity": "persistent",
+                "target_entity": "effusions",
+                "type": "modify"
+            },
+            {
+                "source_entity": "small",
+                "target_entity": "effusions",
+                "type": "modify"
+            },
+            {
+                "source_entity": "bilateral",
+                "target_entity": "effusions",
+                "type": "modify"
+            },
+            {
+                "source_entity": "effusions",
+                "target_entity": "pleural",
+                "type": "located_at"
+            }
+        ]
+    },
+    {
+        "doc_key": "27",
+        "sentences": "the left effusion is slightly greater when compared to the prior exam .",
+        "entities": {
+            "left": "concept",
+            "effusion": "disorder_present",
+            "slightly": "concept",
+            "greater": "concept"
+        },
+        "relations": [
+            {
+                "source_entity": "left",
+                "target_entity": "effusion",
+                "type": "modify"
+            },
+            {
+                "source_entity": "slightly",
+                "target_entity": "greater",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "28",
+        "sentences": "lungs are clear .",
+        "entities": {
+            "lungs": "anatomy",
+            "clear": "concept"
+        },
+        "relations": [
+            {
+                "source_entity": "clear",
+                "target_entity": "lungs",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "29",
+        "sentences": "stable cardiomediastinal silhouette .",
+        "entities": {
+            "stable": "concept",
+            "cardiomediastinal": "anatomy",
+            "silhouette": "concept"
+        },
+        "relations": [
+            {
+                "source_entity": "stable",
+                "target_entity": "silhouette",
+                "type": "modify"
+            },
+            {
+                "source_entity": "silhouette",
+                "target_entity": "cardiomediastinal",
+                "type": "located_at"
+            }
+        ]
+    },
+    {
+        "doc_key": "30",
+        "sentences": "calcifications are again seen in the right suprahilar region , which may represent calcified lymph nodes or post surgical change .",
+        "entities": {
+            "calcifications": "disorder_present",
+            "right": "concept",
+            "suprahilar": "anatomy",
+            "region": "anatomy",
+            "calcified": "concept",
+            "lymph": "anatomy",
+            "nodes": "anatomy",
+            "post": "concept",
+            "surgical": "procedures",
+            "change": "disorder_present"
+        },
+        "relations": [
+            {
+                "source_entity": "calcifications",
+                "target_entity": "suprahilar",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "calcifications",
+                "target_entity": "region",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "right",
+                "target_entity": "suprahilar",
+                "type": "modify"
+            },
+            {
+                "source_entity": "calcified",
+                "target_entity": "nodes",
+                "type": "modify"
+            },
+            {
+                "source_entity": "calcifications",
+                "target_entity": "post surgical change",
+                "type": "suggestive_of"
+            }
+        ]
+    },
+    {
+        "doc_key": "31",
+        "sentences": "bones are stable with mild degenerative changes of the spine .",
+        "entities": {
+            "bones": "anatomy",
+            "stable": "concept",
+            "mild": "concept",
+            "degenerative": "disorder_present",
+            "changes": "disorder_present",
+            "spine": "anatomy"
+        },
+        "relations": [
+            {
+                "source_entity": "stable",
+                "target_entity": "bones",
+                "type": "modify"
+            },
+            {
+                "source_entity": "mild",
+                "target_entity": "degenerative",
+                "type": "modify"
+            },
+            {
+                "source_entity": "degenerative",
+                "target_entity": "changes",
+                "type": "modify"
+            },
+            {
+                "source_entity": "changes",
+                "target_entity": "spine",
+                "type": "located_at"
+            }
+        ]
+    },
+    {
+        "doc_key": "32",
+        "sentences": "sternotomy wires are unchanged .",
+        "entities": {
+            "sternotomy": "procedures",
+            "wires": "devices_present",
+            "unchanged": "concept"
+        },
+        "relations": [
+            {
+                "source_entity": "unchanged",
+                "target_entity": "wires",
+                "type": "modify"
+            },
+            {
+                "source_entity": "wires",
+                "target_entity": "sternotomy",
+                "type": "located_at"
+            }
+        ]
+    },
+    {
+        "doc_key": "33",
+        "sentences": "two views of the chest demonstrate interval development of a left pleural effusion with left lower lobe consolidation , particularly laterally .",
+        "entities": {
+            "two": "concept",
+            "views": "procedures",
+            "chest": "anatomy",
+            "interval": "concept",
+            "development": "concept",
+            "left": "concept",
+            "pleural": "anatomy",
+            "effusion": "disorder_present",
+            "lower": "concept",
+            "lobe": "anatomy",
+            "consolidation": "disorder_present",
+            "laterally": "concept"
+        },
+        "relations": [
+            {
+                "source_entity": "two",
+                "target_entity": "views",
+                "type": "modify"
+            },
+            {
+                "source_entity": "views",
+                "target_entity": "chest",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "interval",
+                "target_entity": "development",
+                "type": "modify"
+            },
+            {
+                "source_entity": "left",
+                "target_entity": "pleural",
+                "type": "modify"
+            },
+            {
+                "source_entity": "effusion",
+                "target_entity": "pleural",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "left",
+                "target_entity": "lobe",
+                "type": "modify"
+            },
+            {
+                "source_entity": "lower",
+                "target_entity": "lobe",
+                "type": "modify"
+            },
+            {
+                "source_entity": "consolidation",
+                "target_entity": "lobe",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "consolidation",
+                "target_entity": "effusion",
+                "type": "suggestive_of"
+            },
+            {
+                "source_entity": "laterally",
+                "target_entity": "consolidation",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "34",
+        "sentences": "interval slight increase in interstitial markings diffusely , which may be due to mild interstitial pulmonary edema .",
+        "entities": {
+            "interval": "concept",
+            "slight": "concept",
+            "increase": "concept",
+            "interstitial": "anatomy",
+            "markings": "concept",
+            "diffusely": "concept",
+            "mild": "concept",
+            "pulmonary": "anatomy",
+            "edema": "disorder_present"
+        },
+        "relations": [
+            {
+                "source_entity": "interval",
+                "target_entity": "increase",
+                "type": "modify"
+            },
+            {
+                "source_entity": "slight",
+                "target_entity": "increase",
+                "type": "modify"
+            },
+            {
+                "source_entity": "increase",
+                "target_entity": "markings",
+                "type": "modify"
+            },
+            {
+                "source_entity": "interstitial",
+                "target_entity": "markings",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "diffusely",
+                "target_entity": "markings",
+                "type": "modify"
+            },
+            {
+                "source_entity": "mild",
+                "target_entity": "edema",
+                "type": "modify"
+            },
+            {
+                "source_entity": "edema",
+                "target_entity": "pulmonary",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "markings",
+                "target_entity": "edema",
+                "type": "suggestive_of"
+            }
+        ]
+    },
+    {
+        "doc_key": "35",
+        "sentences": "redemonstration of a small , calcified granuloma at the left lung base .",
+        "entities": {
+            "redemonstration": "procedures",
+            "small": "concept",
+            "calcified": "concept",
+            "granuloma": "disorder_present",
+            "left": "concept",
+            "lung": "anatomy",
+            "base": "anatomy"
+        },
+        "relations": [
+            {
+                "source_entity": "small",
+                "target_entity": "granuloma",
+                "type": "modify"
+            },
+            {
+                "source_entity": "calcified",
+                "target_entity": "granuloma",
+                "type": "modify"
+            },
+            {
+                "source_entity": "granuloma",
+                "target_entity": "lung",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "left",
+                "target_entity": "lung",
+                "type": "modify"
+            },
+            {
+                "source_entity": "granuloma",
+                "target_entity": "base",
+                "type": "located_at"
+            }
+        ]
+    },
+    {
+        "doc_key": "36",
+        "sentences": "stable appearance of enlarged pulmonary arteries bilaterally .",
+        "entities": {
+            "stable": "concept",
+            "appearance": "concept",
+            "enlarged": "concept",
+            "pulmonary": "anatomy",
+            "arteries": "anatomy",
+            "bilaterally": "concept"
+        },
+        "relations": [
+            {
+                "source_entity": "stable",
+                "target_entity": "appearance",
+                "type": "modify"
+            },
+            {
+                "source_entity": "enlarged",
+                "target_entity": "arteries",
+                "type": "modify"
+            },
+            {
+                "source_entity": "arteries",
+                "target_entity": "pulmonary",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "bilaterally",
+                "target_entity": "arteries",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "37",
+        "sentences": "a tips is again seen on the lateral view .",
+        "entities": {
+            "tips": "procedures",
+            "lateral": "concept",
+            "view": "procedures"
+        },
+        "relations": [
+            {
+                "source_entity": "tips",
+                "target_entity": "view",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "lateral",
+                "target_entity": "view",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "38",
+        "sentences": "two views of the chest demonstrate interval development of a left pleural effusion with left lower lobe consolidation , particularly laterally .",
+        "entities": {
+            "two": "concept",
+            "views": "procedures",
+            "chest": "anatomy",
+            "interval": "concept",
+            "development": "concept",
+            "left": "concept",
+            "pleural": "anatomy",
+            "effusion": "disorder_present",
+            "lower": "concept",
+            "lobe": "anatomy",
+            "consolidation": "disorder_present",
+            "particularly": "concept",
+            "laterally": "concept"
+        },
+        "relations": [
+            {
+                "source_entity": "two",
+                "target_entity": "views",
+                "type": "modify"
+            },
+            {
+                "source_entity": "views",
+                "target_entity": "chest",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "interval",
+                "target_entity": "development",
+                "type": "modify"
+            },
+            {
+                "source_entity": "left",
+                "target_entity": "pleural",
+                "type": "modify"
+            },
+            {
+                "source_entity": "effusion",
+                "target_entity": "pleural",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "left",
+                "target_entity": "lobe",
+                "type": "modify"
+            },
+            {
+                "source_entity": "lower",
+                "target_entity": "lobe",
+                "type": "modify"
+            },
+            {
+                "source_entity": "consolidation",
+                "target_entity": "lobe",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "particularly",
+                "target_entity": "consolidation",
+                "type": "modify"
+            },
+            {
+                "source_entity": "laterally",
+                "target_entity": "consolidation",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "39",
+        "sentences": "interval slight increase in interstitial markings diffusely , which may be due to mild interstitial pulmonary edema .",
+        "entities": {
+            "interval": "concept",
+            "slight": "concept",
+            "increase": "concept",
+            "interstitial": "anatomy",
+            "markings": "anatomy",
+            "diffusely": "concept",
+            "mild": "concept",
+            "pulmonary": "anatomy",
+            "edema": "disorder_present"
+        },
+        "relations": [
+            {
+                "source_entity": "interval",
+                "target_entity": "increase",
+                "type": "modify"
+            },
+            {
+                "source_entity": "slight",
+                "target_entity": "increase",
+                "type": "modify"
+            },
+            {
+                "source_entity": "increase",
+                "target_entity": "interstitial",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "interstitial",
+                "target_entity": "markings",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "mild",
+                "target_entity": "edema",
+                "type": "modify"
+            },
+            {
+                "source_entity": "edema",
+                "target_entity": "pulmonary",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "diffusely",
+                "target_entity": "markings",
+                "type": "modify"
+            },
+            {
+                "source_entity": "increase",
+                "target_entity": "edema",
+                "type": "suggestive_of"
+            }
+        ]
+    },
+    {
+        "doc_key": "40",
+        "sentences": "redemonstration of a small , calcified granuloma at the left lung base .",
+        "entities": {
+            "redemonstration": "concept",
+            "small": "concept",
+            "calcified": "concept",
+            "granuloma": "disorder_present",
+            "left": "concept",
+            "lung": "anatomy",
+            "base": "anatomy"
+        },
+        "relations": [
+            {
+                "source_entity": "small",
+                "target_entity": "granuloma",
+                "type": "modify"
+            },
+            {
+                "source_entity": "calcified",
+                "target_entity": "granuloma",
+                "type": "modify"
+            },
+            {
+                "source_entity": "granuloma",
+                "target_entity": "base",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "left",
+                "target_entity": "lung",
+                "type": "modify"
+            },
+            {
+                "source_entity": "lung",
+                "target_entity": "base",
+                "type": "located_at"
+            }
+        ]
+    },
+    {
+        "doc_key": "41",
+        "sentences": "stable appearance of enlarged pulmonary arteries bilaterally .",
+        "entities": {
+            "stable": "concept",
+            "appearance": "concept",
+            "enlarged": "concept",
+            "pulmonary": "anatomy",
+            "arteries": "anatomy",
+            "bilaterally": "concept"
+        },
+        "relations": [
+            {
+                "source_entity": "stable",
+                "target_entity": "appearance",
+                "type": "modify"
+            },
+            {
+                "source_entity": "appearance",
+                "target_entity": "arteries",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "enlarged",
+                "target_entity": "arteries",
+                "type": "modify"
+            },
+            {
+                "source_entity": "pulmonary",
+                "target_entity": "arteries",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "bilaterally",
+                "target_entity": "arteries",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "42",
+        "sentences": "a tips is again seen on the lateral view .",
+        "entities": {
+            "tips": "devices_present",
+            "lateral": "concept",
+            "view": "procedures"
+        },
+        "relations": [
+            {
+                "source_entity": "tips",
+                "target_entity": "view",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "lateral",
+                "target_entity": "view",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "43",
+        "sentences": "there is pulmonary vascular congestion with prominence of the main pulmonary artery , but no evidence of frank pulmonary edema .",
+        "entities": {
+            "pulmonary": "anatomy",
+            "vascular": "anatomy",
+            "congestion": "disorder_present",
+            "prominence": "disorder_present",
+            "main": "concept",
+            "artery": "anatomy",
+            "frank": "concept",
+            "edema": "disorder_notpresent"
+        },
+        "relations": [
+            {
+                "source_entity": "congestion",
+                "target_entity": "pulmonary",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "congestion",
+                "target_entity": "vascular",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "prominence",
+                "target_entity": "artery",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "main",
+                "target_entity": "artery",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "44",
+        "sentences": "there are small bilateral pleural effusions .",
+        "entities": {
+            "small": "concept",
+            "bilateral": "concept",
+            "pleural": "anatomy",
+            "effusions": "disorder_present"
+        },
+        "relations": [
+            {
+                "source_entity": "small",
+                "target_entity": "effusions",
+                "type": "modify"
+            },
+            {
+                "source_entity": "bilateral",
+                "target_entity": "pleural",
+                "type": "modify"
+            },
+            {
+                "source_entity": "effusions",
+                "target_entity": "pleural",
+                "type": "located_at"
+            }
+        ]
+    },
+    {
+        "doc_key": "45",
+        "sentences": "there is a 1 cm calcified granuloma in the left base .",
+        "entities": {
+            "1": "size",
+            "cm": "size",
+            "calcified": "concept",
+            "granuloma": "disorder_present",
+            "left": "concept",
+            "base": "anatomy"
+        },
+        "relations": [
+            {
+                "source_entity": "1",
+                "target_entity": "cm",
+                "type": "modify"
+            },
+            {
+                "source_entity": "1 cm",
+                "target_entity": "granuloma",
+                "type": "modify"
+            },
+            {
+                "source_entity": "calcified",
+                "target_entity": "granuloma",
+                "type": "modify"
+            },
+            {
+                "source_entity": "granuloma",
+                "target_entity": "base",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "left",
+                "target_entity": "base",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "46",
+        "sentences": "no evidence of focal consolidation .",
+        "entities": {
+            "focal": "concept",
+            "consolidation": "disorder_notpresent"
+        },
+        "relations": [
+            {
+                "source_entity": "focal",
+                "target_entity": "consolidation",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "47",
+        "sentences": "cardiomediastinal silhouette and hila are unremarkable .",
+        "entities": {
+            "cardiomediastinal": "anatomy",
+            "silhouette": "concept",
+            "hila": "anatomy",
+            "unremarkable": "concept"
+        },
+        "relations": [
+            {
+                "source_entity": "cardiomediastinal",
+                "target_entity": "silhouette",
+                "type": "modify"
+            },
+            {
+                "source_entity": "cardiomediastinal silhouette",
+                "target_entity": "hila",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "unremarkable",
+                "target_entity": "cardiomediastinal silhouette",
+                "type": "modify"
+            },
+            {
+                "source_entity": "unremarkable",
+                "target_entity": "hila",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "48",
+        "sentences": "the patient has a stent in the liver consistent with a tips , and evidence of a coil in the epigrastrium .",
+        "entities": {
+            "stent": "devices_present",
+            "liver": "anatomy",
+            "tips": "devices_present",
+            "coil": "devices_present",
+            "epigrastrium": "anatomy"
+        },
+        "relations": [
+            {
+                "source_entity": "stent",
+                "target_entity": "liver",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "tips",
+                "target_entity": "stent",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "coil",
+                "target_entity": "epigrastrium",
+                "type": "located_at"
+            }
+        ]
+    },
+    {
+        "doc_key": "49",
+        "sentences": "the remaining bones and soft tissues are unremarkable .",
+        "entities": {
+            "remaining": "concept",
+            "bones": "anatomy",
+            "soft": "anatomy",
+            "tissues": "anatomy",
+            "unremarkable": "concept"
+        },
+        "relations": [
+            {
+                "source_entity": "remaining",
+                "target_entity": "bones",
+                "type": "modify"
+            },
+            {
+                "source_entity": "remaining",
+                "target_entity": "soft",
+                "type": "modify"
+            },
+            {
+                "source_entity": "remaining",
+                "target_entity": "tissues",
+                "type": "modify"
+            },
+            {
+                "source_entity": "unremarkable",
+                "target_entity": "bones",
+                "type": "modify"
+            },
+            {
+                "source_entity": "unremarkable",
+                "target_entity": "soft tissues",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "50",
+        "sentences": "12 mm focal density in the region of the anterior right fifth rib .",
+        "entities": {
+            "12 mm": "size",
+            "focal": "concept",
+            "density": "disorder_present",
+            "region": "anatomy",
+            "anterior": "concept",
+            "right": "concept",
+            "fifth": "concept",
+            "rib": "anatomy"
+        },
+        "relations": [
+            {
+                "source_entity": "12 mm",
+                "target_entity": "density",
+                "type": "modify"
+            },
+            {
+                "source_entity": "focal",
+                "target_entity": "density",
+                "type": "modify"
+            },
+            {
+                "source_entity": "density",
+                "target_entity": "region",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "anterior",
+                "target_entity": "rib",
+                "type": "modify"
+            },
+            {
+                "source_entity": "right",
+                "target_entity": "rib",
+                "type": "modify"
+            },
+            {
+                "source_entity": "fifth",
+                "target_entity": "rib",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "51",
+        "sentences": "lungs are otherwise clear and the cardiac silhouette is not enlarged .",
+        "entities": {
+            "lungs": "anatomy",
+            "clear": "concept",
+            "cardiac": "anatomy",
+            "silhouette": "anatomy",
+            "enlarged": "disorder_notpresent"
+        },
+        "relations": [
+            {
+                "source_entity": "clear",
+                "target_entity": "lungs",
+                "type": "modify"
+            },
+            {
+                "source_entity": "enlarged",
+                "target_entity": "silhouette",
+                "type": "modify"
+            },
+            {
+                "source_entity": "silhouette",
+                "target_entity": "cardiac",
+                "type": "located_at"
+            }
+        ]
+    },
+    {
+        "doc_key": "52",
+        "sentences": "12 mm focal density in the region of the anterior right fifth rib .",
+        "entities": {
+            "12 mm": "size",
+            "focal": "concept",
+            "density": "disorder_present",
+            "region": "anatomy",
+            "anterior": "concept",
+            "right": "concept",
+            "fifth": "concept",
+            "rib": "anatomy"
+        },
+        "relations": [
+            {
+                "source_entity": "12 mm",
+                "target_entity": "density",
+                "type": "modify"
+            },
+            {
+                "source_entity": "focal",
+                "target_entity": "density",
+                "type": "modify"
+            },
+            {
+                "source_entity": "density",
+                "target_entity": "region",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "anterior",
+                "target_entity": "region",
+                "type": "modify"
+            },
+            {
+                "source_entity": "right",
+                "target_entity": "rib",
+                "type": "modify"
+            },
+            {
+                "source_entity": "fifth",
+                "target_entity": "rib",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "53",
+        "sentences": "lungs are otherwise clear and the cardiac silhouette is not enlarged .",
+        "entities": {
+            "lungs": "anatomy",
+            "clear": "concept",
+            "cardiac": "anatomy",
+            "silhouette": "anatomy",
+            "enlarged": "disorder_notpresent"
+        },
+        "relations": [
+            {
+                "source_entity": "clear",
+                "target_entity": "lungs",
+                "type": "modify"
+            },
+            {
+                "source_entity": "enlarged",
+                "target_entity": "silhouette",
+                "type": "disorder_notpresent"
+            },
+            {
+                "source_entity": "cardiac",
+                "target_entity": "silhouette",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "54",
+        "sentences": "a single ap upright view of the chest taken on 22 june 2006 demonstrates sternal wires and mediastinal clips in place .",
+        "entities": {
+            "ap": "procedures",
+            "upright": "concept",
+            "view": "procedures",
+            "chest": "anatomy",
+            "sternal": "anatomy",
+            "wires": "devices_present",
+            "mediastinal": "anatomy",
+            "clips": "devices_present"
+        },
+        "relations": [
+            {
+                "source_entity": "ap",
+                "target_entity": "view",
+                "type": "modify"
+            },
+            {
+                "source_entity": "upright",
+                "target_entity": "view",
+                "type": "modify"
+            },
+            {
+                "source_entity": "view",
+                "target_entity": "chest",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "wires",
+                "target_entity": "sternal",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "clips",
+                "target_entity": "mediastinal",
+                "type": "located_at"
+            }
+        ]
+    },
+    {
+        "doc_key": "55",
+        "sentences": "cardiac silhouette is enlarged but not significantly changed from the prior study .",
+        "entities": {
+            "cardiac": "anatomy",
+            "silhouette": "concept",
+            "enlarged": "concept",
+            "significantly": "concept",
+            "changed": "concept",
+            "prior": "concept",
+            "study": "procedures"
+        },
+        "relations": [
+            {
+                "source_entity": "cardiac",
+                "target_entity": "silhouette",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "enlarged",
+                "target_entity": "silhouette",
+                "type": "modify"
+            },
+            {
+                "source_entity": "significantly",
+                "target_entity": "changed",
+                "type": "modify"
+            },
+            {
+                "source_entity": "prior",
+                "target_entity": "study",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "56",
+        "sentences": "the aorta is ectatic and tortuous in the chest .",
+        "entities": {
+            "aorta": "anatomy",
+            "ectatic": "disorder_present",
+            "tortuous": "disorder_present",
+            "chest": "anatomy"
+        },
+        "relations": [
+            {
+                "source_entity": "ectatic",
+                "target_entity": "aorta",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "tortuous",
+                "target_entity": "aorta",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "aorta",
+                "target_entity": "chest",
+                "type": "located_at"
+            }
+        ]
+    },
+    {
+        "doc_key": "57",
+        "sentences": "compared with the previous study , the pulmonary vessels are somewhat more prominent , suggesting a mild degree of pulmonary edema .",
+        "entities": {
+            "previous": "concept",
+            "study": "procedures",
+            "pulmonary": "anatomy",
+            "vessels": "anatomy",
+            "prominent": "concept",
+            "suggesting": "concept",
+            "mild": "concept",
+            "degree": "concept",
+            "edema": "disorder_present"
+        },
+        "relations": [
+            {
+                "source_entity": "previous",
+                "target_entity": "study",
+                "type": "modify"
+            },
+            {
+                "source_entity": "pulmonary",
+                "target_entity": "vessels",
+                "type": "located_at"
+            },
+            {
+                "source_entity": "prominent",
+                "target_entity": "vessels",
+                "type": "modify"
+            },
+            {
+                "source_entity": "mild",
+                "target_entity": "degree",
+                "type": "modify"
+            },
+            {
+                "source_entity": "degree",
+                "target_entity": "edema",
+                "type": "suggesting"
+            },
+            {
+                "source_entity": "vessels",
+                "target_entity": "edema",
+                "type": "suggestive_of"
+            }
+        ]
+    },
+    {
+        "doc_key": "58",
+        "sentences": "costophrenic sulci are sharp .",
+        "entities": {
+            "costophrenic": "anatomy",
+            "sulci": "anatomy",
+            "sharp": "concept"
+        },
+        "relations": [
+            {
+                "source_entity": "costophrenic",
+                "target_entity": "sulci",
+                "type": "modify"
+            },
+            {
+                "source_entity": "sharp",
+                "target_entity": "sulci",
+                "type": "modify"
+            }
+        ]
+    },
+    {
+        "doc_key": "59",
+        "sentences": "no pneumothorax is seen .",
+        "entities": {
+            "pneumothorax": "disorder_notpresent"
+        },
+        "relations": []
+    }
+]
