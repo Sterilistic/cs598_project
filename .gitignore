@@ -1,3 +1,7 @@
+# macOS metadata
+.DS_Store
+**/.DS_Store
+
 # Data directories
 data/
 **/data/

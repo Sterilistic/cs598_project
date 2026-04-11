@@ -3,8 +3,8 @@ MODEL=${MODEL:-bert-base-uncased}
 OUTPUT_DIR=${OUTPUT_DIR:-./result/run_relation}
 TRAIN_FILE=${TRAIN_FILE:-./data/data_split/train.json}
 ENTITY_OUTPUT_DIR=${ENTITY_OUTPUT_DIR:-./result/run_entity}
-ENTITY_PRED_DEV=${ENTITY_PRED_DEV:-ent_pred_dev.json}
-ENTITY_PRED_TEST=${ENTITY_PRED_TEST:-ent_pred_test.json}
+ENTITY_PRED_DEV=${ENTITY_PRED_DEV:-ent_pred_mimic_headct.json}
+ENTITY_PRED_TEST=${ENTITY_PRED_TEST:-ent_pred_mimic_headct.json}
 
 "$PYTHON_BIN" run_relation.py \
     --task mimic01 \
