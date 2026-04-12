@@ -12,6 +12,7 @@ from .multilabel import multilabel_metrics_fn
 
 # from .fairness import fairness_metrics_fn
 from .ranking import ranking_metrics_fn
+from .rexkg import rexkg_reverse_structure
 from .regression import regression_metrics_fn
 
 __all__ = [
@@ -25,5 +26,6 @@ __all__ = [
     "multiclass_metrics_fn",
     "multilabel_metrics_fn",
     "ranking_metrics_fn",
+    "rexkg_reverse_structure",
     "regression_metrics_fn",
 ]
