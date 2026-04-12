@@ -2,14 +2,63 @@
 # Description: ReXKG entity and relation extraction tasks for radiology reports
 
 import logging
-from typing import Dict, List, Union, Type, Any
+import argparse
+import importlib
+import json
+import os
+import random
+import sys
+import time
+from pathlib import Path
+from dataclasses import dataclass
+from typing import Dict, List, Union, Type, Any, Optional, Tuple
 
+import numpy as np
 import polars as pl
+import torch
+from torch.optim import AdamW
+from torch.utils.data import Dataset as TorchDataset
+from tqdm import tqdm
+from transformers import (
+    AutoTokenizer,
+    AutoModelForTokenClassification,
+    DataCollatorForTokenClassification,
+    Trainer as HFTrainer,
+    TrainingArguments,
+)
+from transformers.optimization import get_linear_schedule_with_warmup
+
 from pyhealth.data.data import Patient
 from pyhealth.processors import TextProcessor, SequenceProcessor
 from .base_task import BaseTask
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class _EntityPipelineConfig:
+    model_name: str = "bert-base-uncased"
+    learning_rate: float = 1e-5
+    task_learning_rate: float = 5e-4  # accepted for parity with run_entity.sh
+    train_batch_size: int = 8
+    eval_batch_size: int = 64
+    num_epoch: int = 1
+    context_window: int = 100
+    output_dir: str = "./pyhealth_rexkg_entity_output"
+
+
+class _TokenClsJsonDataset(TorchDataset):
+    def __init__(self, encodings: Dict[str, List[List[int]]], labels: List[List[int]]):
+        self.encodings = encodings
+        self.labels = labels
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        item = {k: torch.tensor(v[idx]) for k, v in self.encodings.items()}
+        item["labels"] = torch.tensor(self.labels[idx])
+        return item
 
 
 class RexKGEntityExtractionRadiology(BaseTask):
@@ -65,6 +114,18 @@ class RexKGEntityExtractionRadiology(BaseTask):
     task_name: str = "rexkg_entity_extraction_radiology"
     input_schema: Dict[str, Union[str, Type]] = {"text": TextProcessor}
     output_schema: Dict[str, Union[str, Type]] = {"entities": SequenceProcessor}
+
+    ENTITY_TYPES = [
+        "O",
+        "B-anatomy", "I-anatomy",
+        "B-disorder_present", "I-disorder_present",
+        "B-disorder_notpresent", "I-disorder_notpresent",
+        "B-concept", "I-concept",
+        "B-procedures", "I-procedures",
+        "B-devices_present", "I-devices_present",
+        "B-devices_notpresent", "I-devices_notpresent",
+        "B-size", "I-size",
+    ]
 
     def pre_filter(self, df: pl.LazyFrame) -> pl.LazyFrame:
         """Filter patients with radiology reports.
@@ -135,6 +196,586 @@ class RexKGEntityExtractionRadiology(BaseTask):
             samples.append(sample)
 
         return samples
+
+    @classmethod
+    def run_entity_pipeline(
+        cls,
+        train_data: str,
+        dev_data: str,
+        test_data: Optional[str] = None,
+        task: str = "mimic01",
+        model: str = "bert-base-uncased",
+        output_dir: str = "./pyhealth_rexkg_entity_output",
+        max_span_length: int = 8,
+        do_train: bool = True,
+        do_eval: bool = True,
+        eval_test: bool = True,
+        learning_rate: float = 1e-5,
+        task_learning_rate: float = 5e-4,
+        warmup_proportion: float = 0.1,
+        train_batch_size: int = 8,
+        eval_batch_size: int = 64,
+        num_epoch: int = 1,
+        print_loss_step: int = 100,
+        eval_per_epoch: int = 1,
+        bertadam: bool = False,
+        do_aug: bool = False,
+        train_shuffle: bool = False,
+        use_albert: bool = False,
+        bert_model_dir: Optional[str] = None,
+        context_window: int = 100,
+        seed: int = 42,
+        test_pred_filename: str = "ent_pred_mimic_headct.json",
+        dev_pred_filename: str = "ent_pred_dev.json",
+    ) -> Dict[str, Any]:
+        """Run the legacy ReXKG entity extraction pipeline inside PyHealth."""
+        legacy = cls._get_legacy_entity_runtime()
+
+        args = argparse.Namespace(
+            task=task,
+            data_dir=str(cls._find_rexkg_ner_root() / "data"),
+            output_dir=str(Path(output_dir).expanduser().resolve()),
+            max_span_length=max_span_length,
+            train_batch_size=train_batch_size,
+            eval_batch_size=eval_batch_size,
+            learning_rate=learning_rate,
+            task_learning_rate=task_learning_rate,
+            warmup_proportion=warmup_proportion,
+            num_epoch=num_epoch,
+            print_loss_step=print_loss_step,
+            eval_per_epoch=eval_per_epoch,
+            bertadam=bertadam,
+            do_aug=do_aug,
+            do_train=do_train,
+            train_shuffle=train_shuffle,
+            do_eval=do_eval,
+            eval_test=eval_test,
+            dev_pred_filename=dev_pred_filename,
+            test_pred_filename=test_pred_filename,
+            train_data=str(Path(train_data).expanduser().resolve()),
+            dev_data=str(Path(dev_data).expanduser().resolve()),
+            test_data=str(Path(test_data).expanduser().resolve()) if test_data is not None else str(Path(dev_data).expanduser().resolve()),
+            use_albert=use_albert,
+            model=model,
+            bert_model_dir=bert_model_dir,
+            seed=seed,
+            context_window=context_window,
+        )
+
+        if "albert" in args.model:
+            logger.info("Use Albert: %s", args.model)
+            args.use_albert = True
+
+        cls._setseed(args.seed)
+
+        output_dir_path = Path(args.output_dir)
+        output_dir_path.mkdir(parents=True, exist_ok=True)
+
+        log_path = output_dir_path / ("train.log" if args.do_train else "eval.log")
+        file_handler = logging.FileHandler(log_path, "w")
+        root_logger = logging.getLogger("root")
+        root_logger.addHandler(file_handler)
+
+        try:
+            root_logger.info(vars(args))
+
+            ner_label2id, ner_id2label = legacy["get_labelmap"](legacy["task_ner_labels"][args.task])
+            num_ner_labels = len(legacy["task_ner_labels"][args.task]) + 1
+
+            model_obj = legacy["EntityModel"](args, num_ner_labels=num_ner_labels)
+
+            dev_data_obj = legacy["Dataset"](args.dev_data)
+            dev_samples, dev_ner = legacy["convert_dataset_to_samples"](
+                dev_data_obj,
+                args.max_span_length,
+                ner_label2id=ner_label2id,
+                context_window=args.context_window,
+            )
+            dev_batches = legacy["batchify"](dev_samples, args.eval_batch_size)
+
+            best_result = -1.0
+            if args.do_train:
+                train_data_obj = legacy["Dataset"](args.train_data, is_augment=args.do_aug)
+                train_samples, train_ner = legacy["convert_dataset_to_samples"](
+                    train_data_obj,
+                    args.max_span_length,
+                    ner_label2id=ner_label2id,
+                    context_window=args.context_window,
+                )
+                train_batches = legacy["batchify"](train_samples, args.train_batch_size)
+
+                param_optimizer = list(model_obj.bert_model.named_parameters())
+                optimizer_grouped_parameters = [
+                    {"params": [param for name, param in param_optimizer if "bert" in name]},
+                    {
+                        "params": [param for name, param in param_optimizer if "bert" not in name],
+                        "lr": args.task_learning_rate,
+                    },
+                ]
+                optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
+                total_steps = len(train_batches) * args.num_epoch
+                scheduler = get_linear_schedule_with_warmup(
+                    optimizer,
+                    int(total_steps * args.warmup_proportion),
+                    total_steps,
+                )
+
+                train_loss = 0.0
+                train_examples = 0
+                global_step = 0
+                eval_step = max(1, len(train_batches) // args.eval_per_epoch)
+                root_logger.info(
+                    "eval_step=%d, train_batches=%d, eval_per_epoch=%d",
+                    eval_step,
+                    len(train_batches),
+                    args.eval_per_epoch,
+                )
+
+                for epoch_index in tqdm(range(args.num_epoch)):
+                    if args.train_shuffle:
+                        random.shuffle(train_batches)
+                    for batch_index in tqdm(range(len(train_batches))):
+                        output_dict = model_obj.run_batch(train_batches[batch_index], training=True)
+                        loss = output_dict["ner_loss"]
+                        loss.backward()
+
+                        train_loss += loss.item()
+                        train_examples += len(train_batches[batch_index])
+                        global_step += 1
+
+                        optimizer.step()
+                        scheduler.step()
+                        optimizer.zero_grad()
+
+                        if global_step % args.print_loss_step == 0:
+                            root_logger.info(
+                                "Epoch=%d, iter=%d, loss=%.5f",
+                                epoch_index,
+                                batch_index,
+                                train_loss / max(train_examples, 1),
+                            )
+                            train_loss = 0.0
+                            train_examples = 0
+
+                        if global_step % eval_step == 0:
+                            f1 = cls._evaluate_entity_model(model_obj, dev_batches, dev_ner)
+                            if f1 > best_result:
+                                best_result = f1
+                                root_logger.info("!!! Best valid (epoch=%d): %.2f", epoch_index, f1 * 100)
+                                cls._save_entity_model(model_obj, args)
+
+            test_f1 = None
+            prediction_path = None
+            if args.do_eval:
+                args.bert_model_dir = args.output_dir
+                model_obj = legacy["EntityModel"](args, num_ner_labels=num_ner_labels)
+                if args.eval_test:
+                    test_data_obj = legacy["Dataset"](args.test_data, is_augment=False)
+                    prediction_path = output_dir_path / args.test_pred_filename
+                else:
+                    test_data_obj = legacy["Dataset"](args.dev_data, is_augment=False)
+                    prediction_path = output_dir_path / args.dev_pred_filename
+
+                test_samples, test_ner = legacy["convert_dataset_to_samples"](
+                    test_data_obj,
+                    args.max_span_length,
+                    ner_label2id=ner_label2id,
+                    context_window=args.context_window,
+                )
+                test_batches = legacy["batchify"](test_samples, args.eval_batch_size)
+                test_f1 = cls._evaluate_entity_model(model_obj, test_batches, test_ner)
+                cls._output_ner_predictions(
+                    model_obj,
+                    test_batches,
+                    test_data_obj,
+                    prediction_path,
+                    ner_id2label,
+                    legacy["NpEncoder"],
+                )
+
+            result: Dict[str, Any] = {
+                "output_dir": str(output_dir_path),
+                "log_file": str(log_path),
+                "task": args.task,
+                "model": args.model,
+            }
+            if best_result >= 0:
+                result["best_dev_f1"] = best_result
+            if test_f1 is not None:
+                result["test_f1"] = test_f1
+            if prediction_path is not None:
+                result["test_prediction_file"] = str(prediction_path)
+            return result
+        finally:
+            root_logger.removeHandler(file_handler)
+            file_handler.close()
+
+    @staticmethod
+    def _find_rexkg_ner_root() -> Path:
+        for parent in Path(__file__).resolve().parents:
+            candidate = parent / "src" / "ner"
+            if (candidate / "run_entity.py").exists():
+                return candidate
+        raise FileNotFoundError("Could not locate src/ner for ReXKG legacy entity pipeline")
+
+    @classmethod
+    def _get_legacy_entity_runtime(cls) -> Dict[str, Any]:
+        ner_root = cls._find_rexkg_ner_root()
+        ner_root_str = str(ner_root)
+        if ner_root_str not in sys.path:
+            sys.path.insert(0, ner_root_str)
+
+        shared_data_structures = importlib.import_module("shared.data_structures")
+        shared_const = importlib.import_module("shared.const")
+        entity_utils = importlib.import_module("entity.utils")
+        entity_models = importlib.import_module("entity.models")
+
+        return {
+            "Dataset": shared_data_structures.Dataset,
+            "task_ner_labels": shared_const.task_ner_labels,
+            "get_labelmap": shared_const.get_labelmap,
+            "convert_dataset_to_samples": entity_utils.convert_dataset_to_samples,
+            "batchify": entity_utils.batchify,
+            "NpEncoder": entity_utils.NpEncoder,
+            "EntityModel": entity_models.EntityModel,
+        }
+
+    @staticmethod
+    def _setseed(seed: int) -> None:
+        random.seed(seed)
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(seed)
+
+    @staticmethod
+    def _save_entity_model(model_obj: Any, args: argparse.Namespace) -> None:
+        logger.info("Saving model to %s...", args.output_dir)
+        model_to_save = model_obj.bert_model.module if hasattr(model_obj.bert_model, "module") else model_obj.bert_model
+        model_to_save.save_pretrained(args.output_dir)
+        model_obj.tokenizer.save_pretrained(args.output_dir)
+
+    @staticmethod
+    def _output_ner_predictions(
+        model_obj: Any,
+        batches: List[List[Dict[str, Any]]],
+        dataset: Any,
+        output_file: Path,
+        ner_id2label: Dict[int, str],
+        np_encoder: Type[json.JSONEncoder],
+    ) -> None:
+        ner_result = {}
+        total_pred_entities = 0
+        for batch in batches:
+            output_dict = model_obj.run_batch(batch, training=False)
+            pred_ner = output_dict["pred_ner"]
+            for sample, preds in zip(batch, pred_ner):
+                sample["doc_key"] = str(sample["doc_key"])
+                offset = sample["sent_start_in_doc"] - sample["sent_start"]
+                key = sample["doc_key"] + "-" + str(sample["sentence_ix"])
+                ner_result[key] = []
+                for span, pred in zip(sample["spans"], preds):
+                    if pred == 0:
+                        continue
+                    ner_result[key].append([span[0] + offset, span[1] + offset, ner_id2label[pred]])
+                total_pred_entities += len(ner_result[key])
+
+        logger.info("Total pred entities: %d", total_pred_entities)
+
+        js = dataset.js
+        for index, doc in enumerate(js):
+            doc["doc_key"] = str(doc["doc_key"])
+            doc["predicted_ner"] = []
+            doc["predicted_relations"] = []
+            for sentence_index in range(len(doc["sentences"])):
+                key = doc["doc_key"] + "-" + str(sentence_index)
+                if key in ner_result:
+                    doc["predicted_ner"].append(ner_result[key])
+                else:
+                    logger.info("%s not in NER results!", key)
+                    doc["predicted_ner"].append([])
+                doc["predicted_relations"].append([])
+            js[index] = doc
+
+        logger.info("Output predictions to %s..", output_file)
+        with output_file.open("w", encoding="utf-8") as file_handle:
+            file_handle.write("\n".join(json.dumps(doc, cls=np_encoder) for doc in js))
+
+    @staticmethod
+    def _evaluate_entity_model(model_obj: Any, batches: List[List[Dict[str, Any]]], total_gold: int) -> float:
+        logger.info("Evaluating...")
+        current_time = time.time()
+        correct = 0
+        total_pred = 0
+        label_correct = 0
+        label_total = 0
+
+        for batch in batches:
+            output_dict = model_obj.run_batch(batch, training=False)
+            pred_ner = output_dict["pred_ner"]
+            for sample, preds in zip(batch, pred_ner):
+                for gold, pred in zip(sample["spans_label"], preds):
+                    label_total += 1
+                    if pred == gold:
+                        label_correct += 1
+                    if pred != 0 and gold != 0 and pred == gold:
+                        correct += 1
+                    if pred != 0:
+                        total_pred += 1
+
+        acc = label_correct / label_total
+        logger.info("Accuracy: %5f", acc)
+        logger.info("Cor: %d, Pred TOT: %d, Gold TOT: %d", correct, total_pred, total_gold)
+        precision = correct / total_pred if correct > 0 else 0.0
+        recall = correct / total_gold if correct > 0 else 0.0
+        f1 = 2 * (precision * recall) / (precision + recall) if correct > 0 else 0.0
+        logger.info("P: %.5f, R: %.5f, F1: %.5f", precision, recall, f1)
+        logger.info("Used time: %f", time.time() - current_time)
+        return f1
+
+    @classmethod
+    def _write_rexkg_test_predictions(
+        cls,
+        model_obj: AutoModelForTokenClassification,
+        tokenizer: AutoTokenizer,
+        id2label: Dict[int, str],
+        test_data_path: str,
+        output_path: Path,
+        max_length: int,
+    ) -> None:
+        records = cls._load_json_records(test_data_path)
+        model_obj.eval()
+        device = model_obj.device
+
+        rendered_records: List[Dict[str, Any]] = []
+        for rec in records:
+            rec_out = dict(rec)
+            sentences = rec.get("sentences")
+            if not isinstance(sentences, list):
+                text = str(rec.get("text", "")).strip()
+                sentences = [text.split()] if text else []
+
+            predicted_ner: List[List[List[Union[int, str]]]] = []
+            for sent in sentences:
+                tokens = [str(tok) for tok in sent]
+                if len(tokens) == 0:
+                    predicted_ner.append([])
+                    continue
+
+                enc = tokenizer(
+                    tokens,
+                    is_split_into_words=True,
+                    truncation=True,
+                    max_length=max_length,
+                    return_attention_mask=True,
+                    return_tensors="pt",
+                )
+
+                with torch.no_grad():
+                    logits = model_obj(
+                        input_ids=enc["input_ids"].to(device),
+                        attention_mask=enc["attention_mask"].to(device),
+                    ).logits[0]
+
+                pred_ids = logits.argmax(dim=-1).detach().cpu().tolist()
+                word_ids = enc.word_ids(batch_index=0)
+
+                word_level_tags: List[str] = ["O"] * len(tokens)
+                seen_words = set()
+                for token_idx, word_idx in enumerate(word_ids):
+                    if word_idx is None or word_idx in seen_words or word_idx >= len(tokens):
+                        continue
+                    seen_words.add(word_idx)
+                    word_level_tags[word_idx] = id2label.get(int(pred_ids[token_idx]), "O")
+
+                spans = cls._bio_tags_to_spans(word_level_tags)
+                predicted_ner.append([[s, e, t] for s, e, t in spans])
+
+            rec_out["predicted_ner"] = predicted_ner
+            rec_out["predicted_relations"] = [[] for _ in predicted_ner]
+            rendered_records.append(rec_out)
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(
+            "\n".join(json.dumps(r, ensure_ascii=False) for r in rendered_records),
+            encoding="utf-8",
+        )
+
+    @staticmethod
+    def _bio_tags_to_spans(tags: List[str]) -> List[Tuple[int, int, str]]:
+        spans: List[Tuple[int, int, str]] = []
+        start: Optional[int] = None
+        cur_type: Optional[str] = None
+
+        for idx, tag in enumerate(tags):
+            if tag.startswith("B-"):
+                if start is not None and cur_type is not None:
+                    spans.append((start, idx - 1, cur_type))
+                start = idx
+                cur_type = tag[2:]
+            elif tag.startswith("I-"):
+                ent_type = tag[2:]
+                if start is None or cur_type != ent_type:
+                    if start is not None and cur_type is not None:
+                        spans.append((start, idx - 1, cur_type))
+                    start = idx
+                    cur_type = ent_type
+            else:
+                if start is not None and cur_type is not None:
+                    spans.append((start, idx - 1, cur_type))
+                start = None
+                cur_type = None
+
+        if start is not None and cur_type is not None:
+            spans.append((start, len(tags) - 1, cur_type))
+
+        return spans
+
+    @classmethod
+    def _build_hf_dataset(
+        cls,
+        json_path: str,
+        tokenizer: AutoTokenizer,
+        label2id: Dict[str, int],
+        max_length: int,
+    ) -> _TokenClsJsonDataset:
+        records = cls._load_json_records(json_path)
+
+        all_input_ids, all_attention_mask, all_labels = [], [], []
+        for rec in records:
+            tokens, word_labels = cls._record_to_tokens_and_labels(rec)
+            if len(tokens) == 0:
+                continue
+
+            encoding = tokenizer(
+                tokens,
+                is_split_into_words=True,
+                truncation=True,
+                max_length=max_length,
+                padding="max_length",
+                return_attention_mask=True,
+            )
+
+            word_ids = encoding.word_ids()
+            label_ids = []
+            prev_word = None
+            for wid in word_ids:
+                if wid is None:
+                    label_ids.append(-100)
+                elif wid != prev_word:
+                    label_ids.append(label2id.get(word_labels[wid], 0))
+                else:
+                    # same word-piece; keep same tag for simplicity
+                    label_ids.append(label2id.get(word_labels[wid], 0))
+                prev_word = wid
+
+            all_input_ids.append(encoding["input_ids"])
+            all_attention_mask.append(encoding["attention_mask"])
+            all_labels.append(label_ids)
+
+        enc = {"input_ids": all_input_ids, "attention_mask": all_attention_mask}
+        return _TokenClsJsonDataset(enc, all_labels)
+
+    @staticmethod
+    def _load_json_records(path: str) -> List[Dict[str, Any]]:
+        p = Path(path).expanduser().resolve()
+        if not p.exists():
+            raise FileNotFoundError(f"Entity pipeline data file not found: {p}")
+        raw = p.read_text(encoding="utf-8")
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            # Support JSONL (one JSON object per line), which is common in ReXKG data splits.
+            records = []
+            for line in raw.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                records.append(json.loads(line))
+            return records
+        if isinstance(data, dict) and "data" in data:
+            return data["data"]
+        if isinstance(data, list):
+            return data
+        raise ValueError(f"Unsupported JSON format in {p}")
+
+    @classmethod
+    def _record_to_tokens_and_labels(cls, rec: Dict[str, Any]) -> Tuple[List[str], List[str]]:
+        # format A: explicit tokens + ner_tags
+        if "tokens" in rec and "ner_tags" in rec:
+            tokens = rec["tokens"]
+            tags = rec["ner_tags"]
+            if len(tokens) != len(tags):
+                raise ValueError("tokens and ner_tags length mismatch")
+            norm_tags = [t if t in cls.ENTITY_TYPES else "O" for t in tags]
+            return tokens, norm_tags
+
+        # format C: ReXKG JSON/JSONL with `sentences` and token-index NER spans.
+        # Example span: [start_idx, end_idx, "concept"] where indices are inclusive.
+        if "sentences" in rec and "ner" in rec:
+            sentences = rec.get("sentences") or []
+            ner_by_sentence = rec.get("ner") or []
+            if not sentences:
+                return [], []
+
+            tokens: List[str] = []
+            labels: List[str] = []
+            for si, sent_tokens in enumerate(sentences):
+                sent = list(sent_tokens)
+                sent_labels = ["O"] * len(sent)
+                spans = ner_by_sentence[si] if si < len(ner_by_sentence) else []
+
+                for span in spans:
+                    if len(span) < 3:
+                        continue
+                    start, end, ent_type = int(span[0]), int(span[1]), str(span[2]).strip()
+                    if start < 0 or end < start:
+                        continue
+                    b_tag = f"B-{ent_type}"
+                    i_tag = f"I-{ent_type}"
+                    if b_tag not in cls.ENTITY_TYPES:
+                        continue
+                    for ti in range(start, min(end, len(sent) - 1) + 1):
+                        sent_labels[ti] = b_tag if ti == start else i_tag
+
+                tokens.extend(sent)
+                labels.extend(sent_labels)
+
+            return tokens, labels
+
+        # format B: text + entities (char spans)
+        text = rec.get("text", "")
+        if not text.strip():
+            return [], []
+        tokens = text.split()
+        labels = ["O"] * len(tokens)
+
+        ents = rec.get("entities", [])
+        if ents:
+            # naive whitespace token span mapping
+            offsets = []
+            idx = 0
+            for tok in tokens:
+                start = text.find(tok, idx)
+                end = start + len(tok) if start >= 0 else idx + len(tok)
+                offsets.append((start, end))
+                idx = end
+
+            for e in ents:
+                s, en = int(e.get("start", -1)), int(e.get("end", -1))
+                et = str(e.get("label", "")).strip()
+                if s < 0 or en < 0 or et == "":
+                    continue
+                b, i = f"B-{et}", f"I-{et}"
+                if b not in cls.ENTITY_TYPES:
+                    continue
+                first = True
+                for ti, (ts, te) in enumerate(offsets):
+                    if te <= s or ts >= en:
+                        continue
+                    labels[ti] = b if first else i
+                    first = False
+
+        return tokens, labels
 
 
 class RexKGRelationExtractionRadiology(BaseTask):

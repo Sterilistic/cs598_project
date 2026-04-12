@@ -16,3 +16,6 @@ PyHealth/df_chexpert_plus_240401.csv
 PyHealth/**/df_chexpert_plus_240401.csv
 
 src/ner/result/run_entity/model.safetensors 
+
+PyHealth/examples/rexkg-pyhealth.csv
+PyHealth/examples/rexkg/result/
