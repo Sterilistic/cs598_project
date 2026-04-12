@@ -17,9 +17,10 @@ import numpy as np
 import polars as pl
 import torch
 from torch.optim import AdamW
-from torch.utils.data import Dataset as TorchDataset
+from torch.utils.data import DataLoader, Dataset as TorchDataset
 from tqdm import tqdm
 from transformers import (
+    AutoModelForSequenceClassification,
     AutoTokenizer,
     AutoModelForTokenClassification,
     DataCollatorForTokenClassification,
@@ -58,6 +59,20 @@ class _TokenClsJsonDataset(TorchDataset):
     def __getitem__(self, idx):
         item = {k: torch.tensor(v[idx]) for k, v in self.encodings.items()}
         item["labels"] = torch.tensor(self.labels[idx])
+        return item
+
+
+class _RelationClsDataset(TorchDataset):
+    def __init__(self, encodings: Dict[str, List[List[int]]], labels: List[int]):
+        self.encodings = encodings
+        self.labels = labels
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        item = {k: torch.tensor(v[idx]) for k, v in self.encodings.items()}
+        item["labels"] = torch.tensor(self.labels[idx], dtype=torch.long)
         return item
 
 
@@ -830,16 +845,11 @@ class RexKGRelationExtractionRadiology(BaseTask):
         "entities": SequenceProcessor,
     }
     output_schema: Dict[str, Union[str, Type]] = {"relations": SequenceProcessor}
+    _DEFAULT_RELATION_LABELS = {
+        "mimic01": ["no_relation", "modify", "located_at", "suggestive_of"],
+    }
 
     def pre_filter(self, df: pl.LazyFrame) -> pl.LazyFrame:
-        """Filter to reports with entity annotations.
-
-        Args:
-            df: Lazy polars dataframe of events
-
-        Returns:
-            Filtered dataframe
-        """
         filtered_df = df.filter(
             pl.col("patient_id").is_in(
                 df.filter(pl.col("event_type") == "radiology_reports")
@@ -852,56 +862,351 @@ class RexKGRelationExtractionRadiology(BaseTask):
         return filtered_df
 
     def __call__(self, patient: Patient) -> List[Dict]:
-        """Extract relations between entities in radiology reports.
-
-        Processes radiology reports and extracts relationships between
-        previously identified entities.
-
-        Args:
-            patient: Patient object containing radiology report events
-
-        Returns:
-            List of samples, each containing:
-            - text: Original radiology report text
-            - entities: Extracted entity annotations
-            - relations: Extracted relation annotations
-            - entity_pairs: List of entity pairs and their relation types
-        """
         samples = []
-
-        # Get radiology report events
         reports = patient.get_events(event_type="radiology_reports")
-        
         if not reports:
             return samples
 
         for report in reports:
             text = getattr(report, "text", "")
-            
-            # Skip empty reports
             if not text or text.strip() == "":
                 continue
 
-            # Extract text and initialize relations container
             sample = {
                 "patient_id": patient.patient_id,
                 "text": text,
-                "entities": [],  # Would be populated by entity extraction
-                "relations": [],  # Would be populated by relation extraction
-                "entity_pairs": [],  # Would store (entity_i, entity_j, relation_type)
+                "entities": [],
+                "relations": [],
+                "entity_pairs": [],
             }
-
-            # Include metadata if available
             if hasattr(report, "study_id"):
                 sample["study_id"] = report.study_id
             elif hasattr(report, "report_id"):
                 sample["study_id"] = report.report_id
             if hasattr(report, "report_type"):
                 sample["report_type"] = report.report_type
-
             samples.append(sample)
 
         return samples
+
+    @classmethod
+    def run_relation_pipeline(
+        cls,
+        train_file: str,
+        entity_output_dir: str,
+        entity_predictions_dev: str = "ent_pred_mimic_headct.json",
+        entity_predictions_test: str = "ent_pred_mimic_headct.json",
+        task: str = "mimic01",
+        model: str = "bert-base-uncased",
+        output_dir: str = "./pyhealth_rexkg_relation_output",
+        do_train: bool = True,
+        do_eval: bool = True,
+        do_lower_case: bool = True,
+        eval_test: bool = False,
+        eval_with_gold: bool = True,
+        train_batch_size: int = 16,
+        eval_batch_size: int = 32,
+        learning_rate: float = 5e-5,
+        num_train_epochs: float = 1.0,
+        warmup_proportion: float = 0.1,
+        max_seq_length: int = 256,
+        context_window: int = 100,
+        eval_metric: str = "f1",
+        eval_per_epoch: int = 1,
+        prediction_file: str = "predictions.json",
+        train_mode: str = "random_sorted",
+        add_new_tokens: bool = False,
+        no_cuda: bool = False,
+        seed: int = 42,
+    ) -> Dict[str, Any]:
+        _ = context_window
+        _ = eval_metric
+        _ = eval_per_epoch
+        _ = train_mode
+        _ = add_new_tokens
+
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(seed)
+
+        output_dir_path = Path(output_dir).expanduser().resolve()
+        output_dir_path.mkdir(parents=True, exist_ok=True)
+
+        log_path = output_dir_path / ("train.log" if do_train else "eval.log")
+        file_handler = logging.FileHandler(log_path, "w")
+        logger.addHandler(file_handler)
+
+        try:
+            train_docs = cls._load_json_records(train_file)
+            train_examples = cls._build_relation_examples(
+                docs=train_docs,
+                use_gold_entities=True,
+                include_gold_relations=True,
+            )
+            if len(train_examples) == 0:
+                raise ValueError("No training relation pairs were generated from train_file")
+
+            label_list = cls._infer_relation_label_list(task, train_examples)
+            label2id = {lbl: i for i, lbl in enumerate(label_list)}
+            id2label = {i: lbl for i, lbl in enumerate(label_list)}
+
+            tokenizer = AutoTokenizer.from_pretrained(model, do_lower_case=do_lower_case, use_fast=True)
+            train_texts = [e["text"] for e in train_examples]
+            train_labels = [label2id.get(e["label"], 0) for e in train_examples]
+            train_encodings = tokenizer(train_texts, truncation=True, padding=True, max_length=max_seq_length)
+            train_dataset = _RelationClsDataset(train_encodings, train_labels)
+
+            relation_model = AutoModelForSequenceClassification.from_pretrained(
+                model,
+                num_labels=len(label_list),
+                id2label=id2label,
+                label2id=label2id,
+            )
+
+            device = torch.device("cuda" if torch.cuda.is_available() and not no_cuda else "cpu")
+            relation_model.to(device)
+
+            if do_train:
+                train_loader = DataLoader(train_dataset, batch_size=train_batch_size, shuffle=True)
+                optimizer = AdamW(relation_model.parameters(), lr=learning_rate)
+                total_steps = max(1, int(len(train_loader) * max(1.0, num_train_epochs)))
+                scheduler = get_linear_schedule_with_warmup(
+                    optimizer,
+                    int(total_steps * warmup_proportion),
+                    total_steps,
+                )
+
+                relation_model.train()
+                for _ in range(int(max(1.0, num_train_epochs))):
+                    for batch in train_loader:
+                        batch = {k: v.to(device) for k, v in batch.items()}
+                        outputs = relation_model(**batch)
+                        loss = outputs.loss
+                        loss.backward()
+                        optimizer.step()
+                        scheduler.step()
+                        optimizer.zero_grad()
+
+                relation_model.save_pretrained(output_dir_path)
+                tokenizer.save_pretrained(output_dir_path)
+
+            pred_file_path = output_dir_path / prediction_file
+            eval_metrics: Dict[str, Any] = {}
+            if do_eval:
+                eval_source = Path(entity_output_dir).expanduser().resolve() / (
+                    entity_predictions_test if eval_test else entity_predictions_dev
+                )
+                eval_docs = cls._load_json_records(str(eval_source))
+                eval_examples = cls._build_relation_examples(
+                    docs=eval_docs,
+                    use_gold_entities=eval_with_gold,
+                    include_gold_relations=True,
+                )
+                pred_ids = cls._predict_relation_ids(
+                    relation_model,
+                    tokenizer,
+                    device,
+                    eval_examples,
+                    eval_batch_size,
+                    max_seq_length,
+                )
+                pred_labels = [id2label.get(i, "no_relation") for i in pred_ids]
+                cls._write_relation_predictions(eval_docs, eval_examples, pred_labels, pred_file_path)
+
+                gold_ids = [label2id.get(e["label"], 0) for e in eval_examples]
+                eval_metrics = cls._compute_relation_metrics(pred_ids, gold_ids)
+
+            with (output_dir_path / "label_list.json").open("w", encoding="utf-8") as f:
+                json.dump(label_list, f)
+
+            result: Dict[str, Any] = {
+                "output_dir": str(output_dir_path),
+                "prediction_file": str(pred_file_path),
+                "log_file": str(log_path),
+                "task": task,
+                "model": model,
+            }
+            result.update(eval_metrics)
+            return result
+        finally:
+            logger.removeHandler(file_handler)
+            file_handler.close()
+
+    @staticmethod
+    def _load_json_records(path: str) -> List[Dict[str, Any]]:
+        p = Path(path).expanduser().resolve()
+        if not p.exists():
+            raise FileNotFoundError(f"Relation pipeline data file not found: {p}")
+        raw = p.read_text(encoding="utf-8")
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            rows = []
+            for line in raw.splitlines():
+                line = line.strip()
+                if line:
+                    rows.append(json.loads(line))
+            return rows
+        if isinstance(data, list):
+            return data
+        if isinstance(data, dict) and "data" in data:
+            return data["data"]
+        raise ValueError(f"Unsupported JSON format in {p}")
+
+    @classmethod
+    def _infer_relation_label_list(cls, task: str, examples: List[Dict[str, Any]]) -> List[str]:
+        if task in cls._DEFAULT_RELATION_LABELS:
+            return list(cls._DEFAULT_RELATION_LABELS[task])
+        labels = sorted({e["label"] for e in examples if e["label"] != "no_relation"})
+        return ["no_relation"] + labels
+
+    @staticmethod
+    def _non_overlapping_spans(a: List[int], b: List[int]) -> bool:
+        return a[1] < b[0] or b[1] < a[0]
+
+    @classmethod
+    def _build_relation_examples(
+        cls,
+        docs: List[Dict[str, Any]],
+        use_gold_entities: bool,
+        include_gold_relations: bool,
+    ) -> List[Dict[str, Any]]:
+        examples: List[Dict[str, Any]] = []
+        for doc_idx, doc in enumerate(docs):
+            sentences = doc.get("sentences", [])
+            if not isinstance(sentences, list):
+                continue
+
+            entity_key = "ner" if use_gold_entities and "ner" in doc else "predicted_ner"
+            entities_by_sentence = doc.get(entity_key, [])
+            relations_by_sentence = doc.get("relations", []) if include_gold_relations else []
+
+            for sent_idx, sent_tokens in enumerate(sentences):
+                if not isinstance(sent_tokens, list):
+                    continue
+                entities = entities_by_sentence[sent_idx] if sent_idx < len(entities_by_sentence) else []
+                relations = relations_by_sentence[sent_idx] if sent_idx < len(relations_by_sentence) else []
+
+                gold_map: Dict[Tuple[int, int, int, int], str] = {}
+                for rel in relations:
+                    if isinstance(rel, list) and len(rel) >= 5:
+                        gold_map[(int(rel[0]), int(rel[1]), int(rel[2]), int(rel[3]))] = str(rel[4])
+
+                clean_entities: List[List[Union[int, str]]] = []
+                for ent in entities:
+                    if isinstance(ent, list) and len(ent) >= 3:
+                        s, e, t = int(ent[0]), int(ent[1]), str(ent[2])
+                        if 0 <= s <= e < len(sent_tokens):
+                            clean_entities.append([s, e, t])
+
+                for i, subj in enumerate(clean_entities):
+                    for j, obj in enumerate(clean_entities):
+                        if i == j:
+                            continue
+                        if not cls._non_overlapping_spans(subj, obj):
+                            continue
+                        key = (int(subj[0]), int(subj[1]), int(obj[0]), int(obj[1]))
+                        label = gold_map.get(key, "no_relation")
+                        examples.append(
+                            {
+                                "text": cls._render_pair_text(sent_tokens, subj, obj),
+                                "label": label,
+                                "doc_idx": doc_idx,
+                                "sent_idx": sent_idx,
+                                "subj": [int(subj[0]), int(subj[1])],
+                                "obj": [int(obj[0]), int(obj[1])],
+                            }
+                        )
+        return examples
+
+    @staticmethod
+    def _render_pair_text(tokens: List[str], subj: List[Union[int, str]], obj: List[Union[int, str]]) -> str:
+        s0, s1, st = int(subj[0]), int(subj[1]), str(subj[2])
+        o0, o1, ot = int(obj[0]), int(obj[1]), str(obj[2])
+        rendered: List[str] = []
+        for idx, tok in enumerate(tokens):
+            if idx == s0:
+                rendered.append(f"<SUBJ_START={st}>")
+            if idx == o0:
+                rendered.append(f"<OBJ_START={ot}>")
+            rendered.append(str(tok))
+            if idx == s1:
+                rendered.append(f"<SUBJ_END={st}>")
+            if idx == o1:
+                rendered.append(f"<OBJ_END={ot}>")
+        return " ".join(rendered)
+
+    @staticmethod
+    def _predict_relation_ids(
+        model_obj: AutoModelForSequenceClassification,
+        tokenizer: AutoTokenizer,
+        device: torch.device,
+        examples: List[Dict[str, Any]],
+        batch_size: int,
+        max_length: int,
+    ) -> List[int]:
+        if len(examples) == 0:
+            return []
+        texts = [e["text"] for e in examples]
+        enc = tokenizer(texts, truncation=True, padding=True, max_length=max_length)
+        ds = _RelationClsDataset(enc, [0] * len(texts))
+        dl = DataLoader(ds, batch_size=batch_size, shuffle=False)
+        preds: List[int] = []
+
+        model_obj.eval()
+        with torch.no_grad():
+            for batch in dl:
+                _ = batch.pop("labels")
+                batch = {k: v.to(device) for k, v in batch.items()}
+                logits = model_obj(**batch).logits
+                preds.extend(logits.argmax(dim=-1).detach().cpu().tolist())
+        return preds
+
+    @staticmethod
+    def _compute_relation_metrics(pred_ids: List[int], gold_ids: List[int]) -> Dict[str, float]:
+        if len(pred_ids) == 0 or len(gold_ids) == 0:
+            return {"accuracy": 0.0, "precision": 0.0, "recall": 0.0, "f1": 0.0}
+
+        correct = 0
+        n_pred = 0
+        n_gold = 0
+        for p, g in zip(pred_ids, gold_ids):
+            if p != 0:
+                n_pred += 1
+            if g != 0:
+                n_gold += 1
+            if p != 0 and g != 0 and p == g:
+                correct += 1
+
+        precision = correct / n_pred if n_pred else 0.0
+        recall = correct / n_gold if n_gold else 0.0
+        f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
+        accuracy = float(np.mean(np.array(pred_ids) == np.array(gold_ids)))
+        return {"accuracy": accuracy, "precision": precision, "recall": recall, "f1": f1}
+
+    @staticmethod
+    def _write_relation_predictions(
+        docs: List[Dict[str, Any]],
+        examples: List[Dict[str, Any]],
+        pred_labels: List[str],
+        output_path: Path,
+    ) -> None:
+        for doc in docs:
+            sentences = doc.get("sentences", [])
+            doc["predicted_relations"] = [[] for _ in range(len(sentences))]
+
+        for ex, pred_label in zip(examples, pred_labels):
+            if pred_label == "no_relation":
+                continue
+            docs[ex["doc_idx"]]["predicted_relations"][ex["sent_idx"]].append(
+                [ex["subj"][0], ex["subj"][1], ex["obj"][0], ex["obj"][1], pred_label]
+            )
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with output_path.open("w", encoding="utf-8") as f:
+            f.write("\n".join(json.dumps(doc) for doc in docs))
 
 
 class RexKGKnowledgeGraphConstruction(BaseTask):

@@ -1,23 +1,5 @@
 ['run_entity.py', '--do_train', '--do_eval', '--eval_test', '--learning_rate=1e-5', '--task_learning_rate=5e-4', '--train_batch_size=8', '--eval_batch_size=64', '--num_epoch=1', '--context_window', '100', '--task', 'mimic01', '--data_dir', './data', '--train_data', './data/data_split/train.json', '--dev_data', './data/data_split/test.json', '--test_data', './data/data_split/test.json', '--model', 'bert-base-uncased', '--output_dir', './result/run_entity']
-Namespace(task='mimic01', data_dir='./data', output_dir='./result/run_entity', max_span_length=8, train_batch_size=8, eval_batch_size=64, learning_rate=1e-05, task_learning_rate=0.0005, warmup_proportion=0.1, num_epoch=1, print_loss_step=100, eval_per_epoch=1, bertadam=False, do_aug=False, do_train=True, train_shuffle=False, do_eval=True, eval_test=True, dev_pred_filename='ent_pred_dev.json', test_pred_filename='ent_pred_mimic_headct.json', train_data='./data/data_split/train.json', dev_data='./data/data_split/test.json', test_data='./data/data_split/test.json', use_albert=False, model='bert-base-uncased', bert_model_dir=None, seed=0, context_window=100)
-HTTP Request: HEAD https://huggingface.co/bert-base-uncased/resolve/main/tokenizer_config.json "HTTP/1.1 200 OK"
-HTTP Request: GET https://huggingface.co/bert-base-uncased/resolve/main/tokenizer_config.json "HTTP/1.1 200 OK"
-Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
-HTTP Request: GET https://huggingface.co/api/models/bert-base-uncased/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 307 Temporary Redirect"
-HTTP Request: GET https://huggingface.co/api/models/google-bert/bert-base-uncased/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
-HTTP Request: GET https://huggingface.co/api/models/bert-base-uncased/tree/main?recursive=true&expand=false "HTTP/1.1 307 Temporary Redirect"
-HTTP Request: GET https://huggingface.co/api/models/google-bert/bert-base-uncased/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
-HTTP Request: HEAD https://huggingface.co/bert-base-uncased/resolve/main/vocab.txt "HTTP/1.1 200 OK"
-HTTP Request: GET https://huggingface.co/bert-base-uncased/resolve/main/vocab.txt "HTTP/1.1 200 OK"
-HTTP Request: HEAD https://huggingface.co/bert-base-uncased/resolve/main/tokenizer.json "HTTP/1.1 200 OK"
-HTTP Request: GET https://huggingface.co/bert-base-uncased/resolve/main/tokenizer.json "HTTP/1.1 200 OK"
-HTTP Request: HEAD https://huggingface.co/bert-base-uncased/resolve/main/added_tokens.json "HTTP/1.1 404 Not Found"
-HTTP Request: HEAD https://huggingface.co/bert-base-uncased/resolve/main/special_tokens_map.json "HTTP/1.1 404 Not Found"
-HTTP Request: HEAD https://huggingface.co/bert-base-uncased/resolve/main/chat_template.jinja "HTTP/1.1 404 Not Found"
-HTTP Request: HEAD https://huggingface.co/bert-base-uncased/resolve/main/config.json "HTTP/1.1 200 OK"
-HTTP Request: GET https://huggingface.co/bert-base-uncased/resolve/main/config.json "HTTP/1.1 200 OK"
-HTTP Request: HEAD https://huggingface.co/bert-base-uncased/resolve/main/model.safetensors "HTTP/1.1 302 Found"
-HTTP Request: GET https://huggingface.co/api/models/google-bert/bert-base-uncased/xet-read-token/86b5e0934494bd15c9632b12f734a8a67f723594 "HTTP/1.1 200 OK"
+Namespace(bert_model_dir=None, bertadam=False, context_window=100, data_dir='./data', dev_data='./data/data_split/test.json', dev_pred_filename='ent_pred_dev.json', do_aug=False, do_eval=True, do_train=True, eval_batch_size=64, eval_per_epoch=1, eval_test=True, learning_rate=1e-05, max_span_length=8, model='bert-base-uncased', num_epoch=1, output_dir='./result/run_entity', print_loss_step=100, seed=0, task='mimic01', task_learning_rate=0.0005, test_data='./data/data_split/test.json', test_pred_filename='ent_pred_mimic_headct.json', train_batch_size=8, train_data='./data/data_split/train.json', train_shuffle=False, use_albert=False, warmup_proportion=0.1)
 Moving to CUDA...
 # GPUs = 1
 # Overlap: 0
@@ -37,29 +19,3 @@ Long sentence: {'doc_key': '4389', 'sentence_ix': 0} 123
 Extracted 5086 samples from 5086 documents, with 32768 NER labels, 13.307 avg input length, 128 max length
 Max Length: 128, max NER: 63
 eval_step=636, train_batches=636, eval_per_epoch=1
-Epoch=0, iter=99, loss=86.88204
-Epoch=0, iter=199, loss=20.68467
-Epoch=0, iter=299, loss=12.26509
-Epoch=0, iter=399, loss=9.62570
-Epoch=0, iter=499, loss=7.32685
-Epoch=0, iter=599, loss=7.56401
-Evaluating...
-Accuracy: 0.973600
-Cor: 2762, Pred TOT: 3669, Gold TOT: 3699
-P: 0.75279, R: 0.74669, F1: 0.74973
-Used time: 3.244883
-!!! Best valid (epoch=0): 74.97
-Saving model to ./result/run_entity...
-Loading BERT model from ./result/run_entity/
-Moving to CUDA...
-# GPUs = 1
-# Overlap: 0
-Extracted 560 samples from 560 documents, with 3699 NER labels, 13.125 avg input length, 76 max length
-Max Length: 76, max NER: 32
-Evaluating...
-Accuracy: 0.973600
-Cor: 2762, Pred TOT: 3669, Gold TOT: 3699
-P: 0.75279, R: 0.74669, F1: 0.74973
-Used time: 3.441678
-Total pred entities: 3669
-Output predictions to ./result/run_entity/ent_pred_mimic_headct.json..
