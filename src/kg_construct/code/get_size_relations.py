@@ -7,6 +7,60 @@ import numpy as np
 from operator import itemgetter
 from collections import OrderedDict, defaultdict
 
+
+def normalize_entity_text(text):
+    """Normalize text so relation entities match alias keys more reliably."""
+    if pd.isna(text):
+        return ""
+    text = str(text).strip().lower()
+    # Collapse repeated whitespace to a single space.
+    text = re.sub(r'\s+', ' ', text)
+    # Remove punctuation around the token while keeping medical separators inside terms.
+    return text.strip(".,;:!?\"'()[]{}")
+
+
+def build_entity_lookup(data):
+    """Build lookup table from aliases and names keyed by normalized text."""
+    save_entity_dict = {}
+    for _, entity in data.items():
+        aliases = entity.get('Aliases', [])
+        for alias in aliases:
+            alias_key = normalize_entity_text(alias)
+            if alias_key:
+                save_entity_dict[alias_key] = {
+                    'entity_type': entity.get('entity_type', ''),
+                    'count': entity.get('count', 0),
+                    'name': entity.get('Name', ''),
+                    'cui': entity.get('CUI', '')
+                }
+
+        name_key = normalize_entity_text(entity.get('Name', ''))
+        if name_key and name_key not in save_entity_dict:
+            save_entity_dict[name_key] = {
+                'entity_type': entity.get('entity_type', ''),
+                'count': entity.get('count', 0),
+                'name': entity.get('Name', ''),
+                'cui': entity.get('CUI', '')
+            }
+    return save_entity_dict
+
+
+def candidate_entity_keys(text):
+    """Return normalized candidate keys for robust entity lookup."""
+    key = normalize_entity_text(text)
+    if not key:
+        return []
+
+    candidates = [key]
+    # Lightweight singular/plural fallback for common variations.
+    if key.endswith('ies') and len(key) > 3:
+        candidates.append(key[:-3] + 'y')
+    if key.endswith('es') and len(key) > 2:
+        candidates.append(key[:-2])
+    if key.endswith('s') and len(key) > 1:
+        candidates.append(key[:-1])
+    return list(OrderedDict.fromkeys(candidates))
+
 def has_measurement_units(text):
     # Use regex to match numbers followed by units, e.g., "8mm", "9cm", including ranges like "5-10mm"
     pattern = r'\d+(\.\d+)?\s*-?\s*(mm|cm|m|km|in|ft|yd|mi)'
@@ -18,35 +72,41 @@ def extract_size_relations(input_csv_file, input_json_file, save_csv_file):
     with open(input_json_file, 'r') as file:
         data = json.load(file)
     
-    # Create a dictionary of entities with lowercase aliases as keys
-    save_entity_dict = {}
-    for idx, entity in data.items():
-        for alias in entity['Aliases']:
-            save_entity_dict[alias.lower()] = {
-                'entity_type': entity['entity_type'],
-                'count': entity['count'],
-                'name': entity['Name'],
-                'cui': entity['CUI']
-            }
+    # Create a dictionary of entities with normalized aliases/names as keys.
+    save_entity_dict = build_entity_lookup(data)
     
     # Load relation data
     relation_df = pd.read_csv(input_csv_file)
     
     # Process relations
     save_row = []
+    miss_counter = defaultdict(int)
     for index, row in relation_df.iterrows():
-        if has_measurement_units(row['source_entity']):
-            try:
-                target_entity = save_entity_dict[row['target_entity']]
+        source_entity = normalize_entity_text(row['source_entity'])
+        target_entity_raw = row['target_entity']
+
+        if has_measurement_units(source_entity):
+            resolved_target = None
+            for key in candidate_entity_keys(target_entity_raw):
+                if key in save_entity_dict:
+                    resolved_target = save_entity_dict[key]
+                    break
+
+            if resolved_target is not None:
                 save_row.append([
-                    row['source_entity'],
-                    row['target_entity'],
-                    target_entity['cui'],
-                    target_entity['entity_type'],
+                    source_entity,
+                    normalize_entity_text(target_entity_raw),
+                    resolved_target['cui'],
+                    resolved_target['entity_type'],
                     row['count']
                 ])
-            except KeyError:
-                print(f"Entity not found: {row['target_entity']}")
+            else:
+                miss_counter[normalize_entity_text(target_entity_raw)] += 1
+
+    if miss_counter:
+        print(f"Entity lookup misses: {sum(miss_counter.values())}")
+        for entity, cnt in sorted(miss_counter.items(), key=lambda x: x[1], reverse=True)[:20]:
+            print(f"Entity not found: {entity} (count={cnt})")
     
     # Save processed relations to CSV
     with open(save_csv_file, 'w', newline='') as file:
