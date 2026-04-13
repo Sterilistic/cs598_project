@@ -1,16 +1,13 @@
-# Author: ReXKG Team
 # Description: ReXKG entity and relation extraction tasks for radiology reports
 
 import logging
 import argparse
 import importlib
 import json
-import os
 import random
 import sys
 import time
 from pathlib import Path
-from dataclasses import dataclass
 from typing import Dict, List, Union, Type, Any, Optional, Tuple, TYPE_CHECKING
 
 import numpy as np
@@ -23,9 +20,6 @@ from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
     AutoModelForTokenClassification,
-    DataCollatorForTokenClassification,
-    Trainer as HFTrainer,
-    TrainingArguments,
 )
 from transformers.optimization import get_linear_schedule_with_warmup
 
@@ -37,18 +31,6 @@ if TYPE_CHECKING:
     from ..datasets.rexkg import RexKGDataset
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class _EntityPipelineConfig:
-    model_name: str = "bert-base-uncased"
-    learning_rate: float = 1e-5
-    task_learning_rate: float = 5e-4  # accepted for parity with run_entity.sh
-    train_batch_size: int = 8
-    eval_batch_size: int = 64
-    num_epoch: int = 1
-    context_window: int = 100
-    output_dir: str = "./pyhealth_rexkg_entity_output"
 
 
 class _TokenClsJsonDataset(TorchDataset):
@@ -247,7 +229,11 @@ class RexKGEntityExtractionRadiology(BaseTask):
         test_pred_filename: str = "ent_pred_mimic_headct.json",
         dev_pred_filename: str = "ent_pred_dev.json",
     ) -> Dict[str, Any]:
-        """Run the legacy ReXKG entity extraction pipeline inside PyHealth."""
+        """Run the legacy ReXKG entity extraction pipeline inside PyHealth.
+
+        Split inputs can be provided either as JSON/JSONL paths or RexKGDataset
+        instances created from those split files.
+        """
         legacy = cls._get_legacy_entity_runtime()
 
         if dataset is not None:
@@ -462,6 +448,24 @@ class RexKGEntityExtractionRadiology(BaseTask):
         finally:
             root_logger.removeHandler(file_handler)
             file_handler.close()
+
+    @classmethod
+    def set_task(
+        cls,
+        train_data: Union[str, Path, "RexKGDataset"],
+        dev_data: Union[str, Path, "RexKGDataset"],
+        test_data: Optional[Union[str, Path, "RexKGDataset"]] = None,
+        dataset: Optional["RexKGDataset"] = None,
+        **kwargs: Any,
+    ) -> Dict[str, Any]:
+        """Compatibility alias to run the ReXKG entity pipeline from notebook code."""
+        return cls.run_entity_pipeline(
+            train_data=train_data,
+            dev_data=dev_data,
+            test_data=test_data,
+            dataset=dataset,
+            **kwargs,
+        )
 
     @classmethod
     def _resolve_entity_split_path(
@@ -1108,6 +1112,20 @@ class RexKGRelationExtractionRadiology(BaseTask):
             logger.removeHandler(file_handler)
             file_handler.close()
 
+    @classmethod
+    def set_task(
+        cls,
+        train_file: str,
+        entity_output_dir: str,
+        **kwargs: Any,
+    ) -> Dict[str, Any]:
+        """Compatibility alias to run the ReXKG relation pipeline from notebook code."""
+        return cls.run_relation_pipeline(
+            train_file=train_file,
+            entity_output_dir=entity_output_dir,
+            **kwargs,
+        )
+
     @staticmethod
     def _load_json_records(path: str) -> List[Dict[str, Any]]:
         p = Path(path).expanduser().resolve()
@@ -1282,125 +1300,3 @@ class RexKGRelationExtractionRadiology(BaseTask):
         with output_path.open("w", encoding="utf-8") as f:
             f.write("\n".join(json.dumps(doc) for doc in docs))
 
-
-class RexKGKnowledgeGraphConstruction(BaseTask):
-    """Knowledge graph construction task using ReXKG extractions.
-
-    This task orchestrates the full pipeline of entity and relation extraction
-    from radiology reports to construct a comprehensive knowledge graph. It
-    integrates entity extraction and relation extraction outputs to create
-    a structured representation of clinical knowledge.
-
-    The task produces:
-    - Entity nodes with types and attributes
-    - Relation edges connecting entities
-    - Medical concept linking (UMLS CUIs)
-    - Size and measurement standardization
-
-    Output Knowledge Graph Contains:
-        - Nodes: Entities with types (anatomy, disorder, procedure, etc.)
-        - Edges: Relations between entities (modify, located_at, suggestive_of)
-        - Attributes: Size measurements, qualifiers, temporal information
-        - Semantic Links: UMLS concept mappings for standardization
-
-    This task is typically used as the final stage after entity and
-    relation extraction for complete knowledge graph assembly.
-
-    Args:
-        task_name: Name identifying this task
-        input_schema: Schema defining input feature types
-        output_schema: Schema defining output knowledge graph format
-
-    Examples:
-        >>> from pyhealth.datasets import SampleDataset
-        >>> from pyhealth.tasks import RexKGKnowledgeGraphConstruction
-        >>> dataset = SampleDataset(...)
-        >>> task = RexKGKnowledgeGraphConstruction()
-        >>> samples = dataset.set_task(task)
-        >>> # Each sample contains complete KG from a radiology report
-    """
-
-    task_name: str = "rexkg_kg_construction"
-    input_schema: Dict[str, Union[str, Type]] = {
-        "text": TextProcessor,
-        "entities": SequenceProcessor,
-        "relations": SequenceProcessor,
-    }
-    output_schema: Dict[str, Union[str, Type]] = {
-        "kg_nodes": SequenceProcessor,
-        "kg_edges": SequenceProcessor,
-    }
-
-    def pre_filter(self, df: pl.LazyFrame) -> pl.LazyFrame:
-        """Filter to reports with complete annotations.
-
-        Args:
-            df: Lazy polars dataframe of events
-
-        Returns:
-            Filtered dataframe
-        """
-        filtered_df = df.filter(
-            pl.col("patient_id").is_in(
-                df.filter(pl.col("event_type") == "radiology_reports")
-                .select("patient_id")
-                .unique()
-                .collect()
-                .to_series()
-            )
-        )
-        return filtered_df
-
-    def __call__(self, patient: Patient) -> List[Dict]:
-        """Construct knowledge graph from radiology report extractions.
-
-        Processes radiology reports and produces a complete knowledge graph
-        representation with entities as nodes and relations as edges.
-
-        Args:
-            patient: Patient object containing radiology report events
-
-        Returns:
-            List of samples, each containing:
-            - text: Original radiology report text
-            - kg_nodes: Knowledge graph nodes (entities with metadata)
-            - kg_edges: Knowledge graph edges (relations between entities)
-            - num_nodes: Number of entities in the graph
-            - num_edges: Number of relations in the graph
-        """
-        samples = []
-
-        # Get radiology report events
-        reports = patient.get_events(event_type="radiology_reports")
-        
-        if not reports:
-            return samples
-
-        for report in reports:
-            text = getattr(report, "text", "")
-            
-            # Skip empty reports
-            if not text or text.strip() == "":
-                continue
-
-            # Initialize knowledge graph
-            sample = {
-                "patient_id": patient.patient_id,
-                "text": text,
-                "kg_nodes": [],  # Entity nodes with types and attributes
-                "kg_edges": [],  # Relation edges between entities
-                "num_nodes": 0,
-                "num_edges": 0,
-            }
-
-            # Add metadata
-            if hasattr(report, "study_id"):
-                sample["study_id"] = report.study_id
-            elif hasattr(report, "report_id"):
-                sample["study_id"] = report.report_id
-            if hasattr(report, "report_type"):
-                sample["report_type"] = report.report_type
-
-            samples.append(sample)
-
-        return samples

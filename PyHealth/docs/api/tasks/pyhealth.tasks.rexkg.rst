@@ -29,10 +29,3 @@ in radiology reports.
 Knowledge Graph Construction Task
 -----------------------------------
 
-Complete knowledge graph construction task integrating entity and relation
-extraction outputs.
-
-.. autoclass:: pyhealth.tasks.RexKGKnowledgeGraphConstruction
-    :members:
-    :undoc-members:
-    :show-inheritance:

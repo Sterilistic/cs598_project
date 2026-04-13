@@ -69,5 +69,4 @@ from .patient_linkage_mimic3 import PatientLinkageMIMIC3Task
 from .rexkg import (
     RexKGEntityExtractionRadiology,
     RexKGRelationExtractionRadiology,
-    RexKGKnowledgeGraphConstruction,
 )
