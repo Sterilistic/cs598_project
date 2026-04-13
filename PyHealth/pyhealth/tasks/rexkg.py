@@ -11,7 +11,7 @@ import sys
 import time
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Dict, List, Union, Type, Any, Optional, Tuple
+from typing import Dict, List, Union, Type, Any, Optional, Tuple, TYPE_CHECKING
 
 import numpy as np
 import polars as pl
@@ -32,6 +32,9 @@ from transformers.optimization import get_linear_schedule_with_warmup
 from pyhealth.data.data import Patient
 from pyhealth.processors import TextProcessor, SequenceProcessor
 from .base_task import BaseTask
+
+if TYPE_CHECKING:
+    from ..datasets.rexkg import RexKGDataset
 
 logger = logging.getLogger(__name__)
 
@@ -215,9 +218,10 @@ class RexKGEntityExtractionRadiology(BaseTask):
     @classmethod
     def run_entity_pipeline(
         cls,
-        train_data: str,
-        dev_data: str,
-        test_data: Optional[str] = None,
+        train_data: Union[str, Path, "RexKGDataset"],
+        dev_data: Union[str, Path, "RexKGDataset"],
+        test_data: Optional[Union[str, Path, "RexKGDataset"]] = None,
+        dataset: Optional["RexKGDataset"] = None,
         task: str = "mimic01",
         model: str = "bert-base-uncased",
         output_dir: str = "./pyhealth_rexkg_entity_output",
@@ -246,6 +250,40 @@ class RexKGEntityExtractionRadiology(BaseTask):
         """Run the legacy ReXKG entity extraction pipeline inside PyHealth."""
         legacy = cls._get_legacy_entity_runtime()
 
+        if dataset is not None:
+            from ..datasets.rexkg import RexKGDataset
+
+            if not isinstance(dataset, RexKGDataset):
+                raise TypeError("dataset must be a RexKGDataset instance when provided.")
+
+        train_data_path = cls._resolve_entity_split_path(train_data, "train_data")
+        dev_data_path = cls._resolve_entity_split_path(dev_data, "dev_data")
+        test_data_path = (
+            cls._resolve_entity_split_path(test_data, "test_data") if test_data is not None else dev_data_path
+        )
+
+        train_dataset = cls._create_entity_split_dataset(
+            split_root=train_data_path,
+            train_data_path=train_data_path,
+            dev_data_path=dev_data_path,
+            test_data_path=test_data_path,
+            dataset_name="rexkg_train",
+        )
+        dev_dataset = cls._create_entity_split_dataset(
+            split_root=dev_data_path,
+            train_data_path=train_data_path,
+            dev_data_path=dev_data_path,
+            test_data_path=test_data_path,
+            dataset_name="rexkg_dev",
+        )
+        test_dataset = cls._create_entity_split_dataset(
+            split_root=test_data_path,
+            train_data_path=train_data_path,
+            dev_data_path=dev_data_path,
+            test_data_path=test_data_path,
+            dataset_name="rexkg_test",
+        )
+
         args = argparse.Namespace(
             task=task,
             data_dir=str(cls._find_rexkg_ner_root() / "data"),
@@ -267,9 +305,9 @@ class RexKGEntityExtractionRadiology(BaseTask):
             eval_test=eval_test,
             dev_pred_filename=dev_pred_filename,
             test_pred_filename=test_pred_filename,
-            train_data=str(Path(train_data).expanduser().resolve()),
-            dev_data=str(Path(dev_data).expanduser().resolve()),
-            test_data=str(Path(test_data).expanduser().resolve()) if test_data is not None else str(Path(dev_data).expanduser().resolve()),
+            train_data=str(train_dataset.split_data_path or train_data_path),
+            dev_data=str(dev_dataset.split_data_path or dev_data_path),
+            test_data=str(test_dataset.split_data_path or test_data_path),
             use_albert=use_albert,
             model=model,
             bert_model_dir=bert_model_dir,
@@ -424,6 +462,42 @@ class RexKGEntityExtractionRadiology(BaseTask):
         finally:
             root_logger.removeHandler(file_handler)
             file_handler.close()
+
+    @classmethod
+    def _resolve_entity_split_path(
+        cls,
+        split_data: Union[str, Path, "RexKGDataset"],
+        arg_name: str,
+    ) -> str:
+        from ..datasets.rexkg import RexKGDataset
+
+        if isinstance(split_data, RexKGDataset):
+            split_path = split_data.split_data_path
+            if not split_path:
+                raise ValueError(
+                    f"{arg_name} must point to a JSON/JSONL split file when passing RexKGDataset."
+                )
+            return str(Path(split_path).expanduser().resolve())
+
+        return str(Path(split_data).expanduser().resolve())
+
+    @staticmethod
+    def _create_entity_split_dataset(
+        split_root: str,
+        train_data_path: str,
+        dev_data_path: str,
+        test_data_path: str,
+        dataset_name: str,
+    ) -> Any:
+        from ..datasets.rexkg import RexKGDataset
+
+        return RexKGDataset(
+            root=split_root,
+            train_data=train_data_path,
+            dev_data=dev_data_path,
+            test_data=test_data_path,
+            dataset_name=dataset_name,
+        )
 
     @staticmethod
     def _find_rexkg_ner_root() -> Path:

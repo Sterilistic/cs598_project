@@ -28,17 +28,36 @@ class RexKGDataset(BaseDataset):
     def __init__(
         self,
         root: str,
+        train_data: Optional[str] = None,
+        dev_data: Optional[str] = None,
+        test_data: Optional[str] = None,
         dataset_name: Optional[str] = None,
         config_path: Optional[str] = None,
         cache_dir: Optional[str] = None,
         num_workers: int = 1,
         dev: bool = False,
     ) -> None:
+        input_path = Path(root).expanduser().resolve()
+
+        self.train_data = str(Path(train_data).expanduser().resolve()) if train_data else None
+        self.dev_data = str(Path(dev_data).expanduser().resolve()) if dev_data else None
+        self.test_data = str(Path(test_data).expanduser().resolve()) if test_data else None
+        self.split_data_path = str(input_path) if input_path.suffix.lower() in {".json", ".jsonl"} else None
+
+        # Entity/relation legacy pipelines consume JSON/JSONL split files directly.
+        # Support constructing a lightweight RexKGDataset wrapper for those files.
+        if self.split_data_path is not None:
+            self.root = str(input_path.parent)
+            self.dataset_name = dataset_name or "rexkg"
+            self.config_path = str(config_path) if config_path is not None else None
+            self.cache_dir = cache_dir
+            self.num_workers = num_workers
+            self.dev = dev
+            return
+
         if config_path is None:
             logger.info("No config path provided, using default RexKG config")
             config_path = Path(__file__).parent / "configs" / "rexkg_dataset.yaml"
-
-        input_path = Path(root).expanduser().resolve()
 
         if input_path.is_file():
             data_dir = input_path.parent
