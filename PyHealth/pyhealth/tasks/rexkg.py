@@ -3,10 +3,13 @@
 import logging
 import argparse
 import importlib
+import csv
 import json
 import random
+import re
 import sys
 import time
+from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Dict, List, Union, Type, Any, Optional, Tuple, TYPE_CHECKING
 
@@ -967,6 +970,253 @@ class RexKGRelationExtractionRadiology(BaseTask):
 
         return samples
 
+    # ------------------------------------------------------------------ #
+    #  Helpers inlined from run_relation.py (no external src/ner import  #
+    #  needed for these pure-Python utilities).                          #
+    # ------------------------------------------------------------------ #
+
+    class _InputFeatures:
+        def __init__(self, input_ids, input_mask, segment_ids, label_id, sub_idx, obj_idx):
+            self.input_ids = input_ids
+            self.input_mask = input_mask
+            self.segment_ids = segment_ids
+            self.label_id = label_id
+            self.sub_idx = sub_idx
+            self.obj_idx = obj_idx
+
+    @staticmethod
+    def _add_marker_tokens(tokenizer: AutoTokenizer, ner_labels: List[str]) -> None:
+        new_tokens = ["<SUBJ_START>", "<SUBJ_END>", "<OBJ_START>", "<OBJ_END>"]
+        for label in ner_labels:
+            new_tokens += [
+                "<SUBJ_START=%s>" % label, "<SUBJ_END=%s>" % label,
+                "<OBJ_START=%s>" % label, "<OBJ_END=%s>" % label,
+            ]
+        for label in ner_labels:
+            new_tokens += ["<SUBJ=%s>" % label, "<OBJ=%s>" % label]
+        tokenizer.add_tokens(new_tokens)
+        print("# vocab after adding markers: %d" % len(tokenizer))
+
+    @classmethod
+    def _convert_examples_to_features(
+        cls,
+        examples: List[Dict[str, Any]],
+        label2id: Dict[str, int],
+        max_seq_length: int,
+        tokenizer: AutoTokenizer,
+        special_tokens: Dict[str, str],
+        unused_tokens: bool = True,
+    ) -> List["RexKGRelationExtractionRadiology._InputFeatures"]:
+        CLS = "[CLS]"
+        SEP = "[SEP]"
+
+        def get_special_token(w: str) -> str:
+            if w not in special_tokens:
+                if unused_tokens:
+                    special_tokens[w] = "[unused%d]" % (len(special_tokens) + 1)
+                else:
+                    special_tokens[w] = ("<" + w + ">").lower()
+            return special_tokens[w]
+
+        num_tokens = 0
+        max_tokens = 0
+        num_fit_examples = 0
+        num_shown_examples = 0
+        features = []
+
+        for ex_index, example in enumerate(examples):
+            if ex_index % 10000 == 0:
+                print("Writing example %d of %d" % (ex_index, len(examples)))
+
+            tokens = [CLS]
+            SUBJECT_START_NER = get_special_token("SUBJ_START=%s" % example["subj_type"])
+            SUBJECT_END_NER   = get_special_token("SUBJ_END=%s"   % example["subj_type"])
+            OBJECT_START_NER  = get_special_token("OBJ_START=%s"  % example["obj_type"])
+            OBJECT_END_NER    = get_special_token("OBJ_END=%s"    % example["obj_type"])
+            # consume the plain markers so special_tokens tracks them too
+            get_special_token("SUBJ_START"); get_special_token("SUBJ_END")
+            get_special_token("OBJ_START");  get_special_token("OBJ_END")
+            get_special_token("SUBJ=%s" % example["subj_type"])
+            get_special_token("OBJ=%s"  % example["obj_type"])
+
+            sub_idx = obj_idx = 0
+            for i, token in enumerate(example["token"]):
+                if i == example["subj_start"]:
+                    sub_idx = len(tokens)
+                    tokens.append(SUBJECT_START_NER)
+                if i == example["obj_start"]:
+                    obj_idx = len(tokens)
+                    tokens.append(OBJECT_START_NER)
+                for sub_token in tokenizer.tokenize(token):
+                    tokens.append(sub_token)
+                if i == example["subj_end"]:
+                    tokens.append(SUBJECT_END_NER)
+                if i == example["obj_end"]:
+                    tokens.append(OBJECT_END_NER)
+            tokens.append(SEP)
+
+            num_tokens += len(tokens)
+            max_tokens = max(max_tokens, len(tokens))
+
+            if len(tokens) > max_seq_length:
+                tokens = tokens[:max_seq_length]
+                if sub_idx >= max_seq_length:
+                    sub_idx = 0
+                if obj_idx >= max_seq_length:
+                    obj_idx = 0
+            else:
+                num_fit_examples += 1
+
+            segment_ids = [0] * len(tokens)
+            input_ids   = tokenizer.convert_tokens_to_ids(tokens)
+            input_mask  = [1] * len(input_ids)
+            padding     = [0] * (max_seq_length - len(input_ids))
+            input_ids   += padding
+            input_mask  += padding
+            segment_ids += padding
+
+            try:
+                label_id = label2id[example["relation"]]
+            except KeyError:
+                print(example["relation"])
+                label_id = 0
+
+            if num_shown_examples < 20 and (ex_index < 5 or label_id > 0):
+                num_shown_examples += 1
+                print("*** Example ***")
+                print("guid: %s" % example["id"])
+                print("tokens: %s" % " ".join(str(x) for x in tokens))
+                print("input_ids: %s" % " ".join(str(x) for x in input_ids))
+                print("input_mask: %s" % " ".join(str(x) for x in input_mask))
+                print("segment_ids: %s" % " ".join(str(x) for x in segment_ids))
+                print("label: %s (id = %d)" % (example["relation"], label_id))
+                print("sub_idx, obj_idx: %d, %d" % (sub_idx, obj_idx))
+
+            features.append(cls._InputFeatures(
+                input_ids=input_ids,
+                input_mask=input_mask,
+                segment_ids=segment_ids,
+                label_id=label_id,
+                sub_idx=sub_idx,
+                obj_idx=obj_idx,
+            ))
+
+        print("Average #tokens: %.2f" % (num_tokens * 1.0 / max(len(examples), 1)))
+        print("Max #tokens: %d" % max_tokens)
+        print("%d (%.2f %%) examples can fit max_seq_length = %d" % (
+            num_fit_examples,
+            num_fit_examples * 100.0 / max(len(examples), 1),
+            max_seq_length,
+        ))
+        return features
+
+    @staticmethod
+    def _simple_accuracy(preds: np.ndarray, labels: np.ndarray) -> float:
+        return float((preds == labels).mean())
+
+    @staticmethod
+    def _compute_f1_full(
+        preds: np.ndarray,
+        labels: np.ndarray,
+        e2e_ngold: Optional[int],
+    ) -> Dict[str, Any]:
+        n_gold = n_pred = n_correct = 0
+        for pred, label in zip(preds, labels):
+            if pred != 0:
+                n_pred += 1
+            if label != 0:
+                n_gold += 1
+            if pred != 0 and label != 0 and pred == label:
+                n_correct += 1
+        if n_correct == 0:
+            return {"precision": 0.0, "recall": 0.0, "f1": 0.0}
+        prec   = n_correct / n_pred
+        recall = n_correct / n_gold
+        f1     = 2.0 * prec * recall / (prec + recall) if prec + recall > 0 else 0.0
+        if e2e_ngold is not None:
+            e2e_recall = n_correct / e2e_ngold
+            e2e_f1 = 2.0 * prec * e2e_recall / (prec + e2e_recall) if prec + e2e_recall > 0 else 0.0
+        else:
+            e2e_recall = e2e_f1 = 0.0
+        return {
+            "precision": prec, "recall": e2e_recall, "f1": e2e_f1,
+            "task_recall": recall, "task_f1": f1,
+            "n_correct": n_correct, "n_pred": n_pred,
+            "n_gold": e2e_ngold, "task_ngold": n_gold,
+        }
+
+    @staticmethod
+    def _evaluate_model(
+        model: Any,
+        device: torch.device,
+        eval_dataloader: Any,
+        eval_label_ids: torch.Tensor,
+        num_labels: int,
+        e2e_ngold: Optional[int] = None,
+    ) -> Tuple[np.ndarray, Dict[str, Any], np.ndarray]:
+        from torch.nn import CrossEntropyLoss
+        model.eval()
+        eval_loss = 0.0
+        nb_eval_steps = 0
+        all_logits: Optional[np.ndarray] = None
+
+        for input_ids, input_mask, segment_ids, label_ids, sub_idx, obj_idx in eval_dataloader:
+            input_ids    = input_ids.to(device)
+            input_mask   = input_mask.to(device)
+            segment_ids  = segment_ids.to(device)
+            label_ids    = label_ids.to(device)
+            sub_idx      = sub_idx.to(device)
+            obj_idx      = obj_idx.to(device)
+            with torch.no_grad():
+                logits = model(input_ids, segment_ids, input_mask, labels=None,
+                               sub_idx=sub_idx, obj_idx=obj_idx)
+            loss_fct = CrossEntropyLoss()
+            eval_loss += loss_fct(logits.view(-1, num_labels), label_ids.view(-1)).mean().item()
+            nb_eval_steps += 1
+            batch_logits = logits.detach().cpu().numpy()
+            all_logits = batch_logits if all_logits is None else np.append(all_logits, batch_logits, axis=0)
+
+        eval_loss /= nb_eval_steps
+        preds = np.argmax(all_logits, axis=1)
+        result = RexKGRelationExtractionRadiology._compute_f1_full(preds, eval_label_ids.numpy(), e2e_ngold)
+        result["accuracy"]  = RexKGRelationExtractionRadiology._simple_accuracy(preds, eval_label_ids.numpy())
+        result["eval_loss"] = eval_loss
+
+        print("***** Eval results *****")
+        for key in sorted(result.keys()):
+            print("  %s = %s" % (key, str(result[key])))
+
+        return preds, result, all_logits
+
+    @staticmethod
+    def _print_pred_json(
+        eval_data: Any,
+        eval_examples: List[Dict[str, Any]],
+        preds: np.ndarray,
+        id2label: Dict[int, str],
+        output_file: str,
+    ) -> None:
+        from relation.utils import decode_sample_id  # type: ignore[import]
+        rels: Dict[str, List[Any]] = {}
+        for ex, pred in zip(eval_examples, preds):
+            doc_sent, sub, obj = decode_sample_id(ex["id"])
+            rels.setdefault(doc_sent, [])
+            if int(pred) != 0:
+                rels[doc_sent].append([sub[0], sub[1], obj[0], obj[1], id2label[int(pred)]])
+
+        js = eval_data.js
+        for doc in js:
+            doc["predicted_relations"] = []
+            for sid in range(len(doc["sentences"])):
+                k = "%s@%d" % (doc["doc_key"], sid)
+                doc["predicted_relations"].append(rels.get(k, []))
+
+        print("Output predictions to %s.." % output_file)
+        with open(output_file, "w") as f:
+            f.write("\n".join(json.dumps(doc) for doc in js))
+
+    # ------------------------------------------------------------------ #
+
     @classmethod
     def run_relation_pipeline(
         cls,
@@ -988,7 +1238,7 @@ class RexKGRelationExtractionRadiology(BaseTask):
         num_train_epochs: float = 1.0,
         warmup_proportion: float = 0.1,
         max_seq_length: int = 256,
-        context_window: int = 100,
+        context_window: int = 0,
         eval_metric: str = "f1",
         eval_per_epoch: int = 1,
         prediction_file: str = "predictions.json",
@@ -996,121 +1246,319 @@ class RexKGRelationExtractionRadiology(BaseTask):
         add_new_tokens: bool = False,
         no_cuda: bool = False,
         seed: int = 42,
+        negative_label: str = "no_relation",
+        ner_src_dir: Optional[str] = None,
     ) -> Dict[str, Any]:
-        _ = context_window
-        _ = eval_metric
-        _ = eval_per_epoch
-        _ = train_mode
-        _ = add_new_tokens
+        """Run the ReXKG relation pipeline, matching run_relation.py behaviour.
 
+        Parameters
+        ----------
+        ner_src_dir:
+            Absolute path to the ``src/ner`` directory that contains the
+            ``relation/``, ``shared/`` packages.  The method tries to
+            auto-detect this by walking up from ``output_dir``; supply it
+            explicitly when auto-detection fails.
+        """
+        from torch.utils.data import TensorDataset
+
+        # ── locate src/ner and inject it into sys.path ─────────────────
+        if ner_src_dir is None:
+            candidate = Path(output_dir).expanduser().resolve()
+            for _ in range(10):
+                candidate = candidate.parent
+                if (candidate / "src" / "ner").is_dir():
+                    ner_src_dir = str(candidate / "src" / "ner")
+                    break
+        if ner_src_dir is None:
+            raise RuntimeError(
+                "Could not auto-detect src/ner directory. "
+                "Pass ner_src_dir=<path to src/ner> explicitly."
+            )
+        if ner_src_dir not in sys.path:
+            sys.path.insert(0, ner_src_dir)
+
+        from relation.utils import generate_relation_data  # type: ignore[import]
+        from relation.models import BertForRelation         # type: ignore[import]
+        from shared.const import task_rel_labels, task_ner_labels  # type: ignore[import]
+
+        # ── seeding ────────────────────────────────────────────────────
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(seed)
 
+        device   = torch.device("cuda" if torch.cuda.is_available() and not no_cuda else "cpu")
+        n_gpu    = torch.cuda.device_count()
+
         output_dir_path = Path(output_dir).expanduser().resolve()
         output_dir_path.mkdir(parents=True, exist_ok=True)
 
-        log_path = output_dir_path / ("train.log" if do_train else "eval.log")
-        file_handler = logging.FileHandler(log_path, "w")
-        logger.addHandler(file_handler)
+        print("device: {}, n_gpu: {}".format(device, n_gpu))
 
-        try:
-            train_docs = cls._load_json_records(train_file)
-            train_examples = cls._build_relation_examples(
-                docs=train_docs,
-                use_gold_entities=True,
-                include_gold_relations=True,
+        # ── load / build data ──────────────────────────────────────────
+        if do_train:
+            train_dataset_obj, train_examples, train_nrel = generate_relation_data(
+                train_file, use_gold=True, context_window=context_window
             )
-            if len(train_examples) == 0:
-                raise ValueError("No training relation pairs were generated from train_file")
-
-            label_list = cls._infer_relation_label_list(task, train_examples)
-            label2id = {lbl: i for i, lbl in enumerate(label_list)}
-            id2label = {i: lbl for i, lbl in enumerate(label_list)}
-
-            tokenizer = AutoTokenizer.from_pretrained(model, do_lower_case=do_lower_case, use_fast=True)
-            train_texts = [e["text"] for e in train_examples]
-            train_labels = [label2id.get(e["label"], 0) for e in train_examples]
-            train_encodings = tokenizer(train_texts, truncation=True, padding=True, max_length=max_seq_length)
-            train_dataset = _RelationClsDataset(train_encodings, train_labels)
-
-            relation_model = AutoModelForSequenceClassification.from_pretrained(
-                model,
-                num_labels=len(label_list),
-                id2label=id2label,
-                label2id=label2id,
+        if (do_eval and do_train) or (do_eval and not eval_test):
+            eval_dev_file = str(
+                Path(entity_output_dir).expanduser().resolve() / entity_predictions_dev
+            )
+            eval_dataset_obj, eval_examples, eval_nrel = generate_relation_data(
+                eval_dev_file, use_gold=eval_with_gold, context_window=context_window
+            )
+        if eval_test:
+            eval_test_file = str(
+                Path(entity_output_dir).expanduser().resolve() / entity_predictions_test
+            )
+            test_dataset_obj, test_examples, test_nrel = generate_relation_data(
+                eval_test_file, use_gold=eval_with_gold, context_window=context_window
             )
 
-            device = torch.device("cuda" if torch.cuda.is_available() and not no_cuda else "cpu")
-            relation_model.to(device)
+        if not do_train and not do_eval:
+            raise ValueError("At least one of do_train or do_eval must be True.")
 
-            if do_train:
-                train_loader = DataLoader(train_dataset, batch_size=train_batch_size, shuffle=True)
-                optimizer = AdamW(relation_model.parameters(), lr=learning_rate)
-                total_steps = max(1, int(len(train_loader) * max(1.0, num_train_epochs)))
-                scheduler = get_linear_schedule_with_warmup(
-                    optimizer,
-                    int(total_steps * warmup_proportion),
-                    total_steps,
-                )
-
-                relation_model.train()
-                for _ in range(int(max(1.0, num_train_epochs))):
-                    for batch in train_loader:
-                        batch = {k: v.to(device) for k, v in batch.items()}
-                        outputs = relation_model(**batch)
-                        loss = outputs.loss
-                        loss.backward()
-                        optimizer.step()
-                        scheduler.step()
-                        optimizer.zero_grad()
-
-                relation_model.save_pretrained(output_dir_path)
-                tokenizer.save_pretrained(output_dir_path)
-
-            pred_file_path = output_dir_path / prediction_file
-            eval_metrics: Dict[str, Any] = {}
-            if do_eval:
-                eval_source = Path(entity_output_dir).expanduser().resolve() / (
-                    entity_predictions_test if eval_test else entity_predictions_dev
-                )
-                eval_docs = cls._load_json_records(str(eval_source))
-                eval_examples = cls._build_relation_examples(
-                    docs=eval_docs,
-                    use_gold_entities=eval_with_gold,
-                    include_gold_relations=True,
-                )
-                pred_ids = cls._predict_relation_ids(
-                    relation_model,
-                    tokenizer,
-                    device,
-                    eval_examples,
-                    eval_batch_size,
-                    max_seq_length,
-                )
-                pred_labels = [id2label.get(i, "no_relation") for i in pred_ids]
-                cls._write_relation_predictions(eval_docs, eval_examples, pred_labels, pred_file_path)
-
-                gold_ids = [label2id.get(e["label"], 0) for e in eval_examples]
-                eval_metrics = cls._compute_relation_metrics(pred_ids, gold_ids)
-
-            with (output_dir_path / "label_list.json").open("w", encoding="utf-8") as f:
+        # ── label list ─────────────────────────────────────────────────
+        label_list_path = output_dir_path / "label_list.json"
+        if label_list_path.exists():
+            with label_list_path.open() as f:
+                label_list = json.load(f)
+        else:
+            label_list = [negative_label] + task_rel_labels[task]
+            with label_list_path.open("w") as f:
                 json.dump(label_list, f)
+        label2id   = {lbl: i for i, lbl in enumerate(label_list)}
+        id2label   = {i: lbl for i, lbl in enumerate(label_list)}
+        num_labels = len(label_list)
 
-            result: Dict[str, Any] = {
-                "output_dir": str(output_dir_path),
-                "prediction_file": str(pred_file_path),
-                "log_file": str(log_path),
-                "task": task,
-                "model": model,
-            }
-            result.update(eval_metrics)
-            return result
-        finally:
-            logger.removeHandler(file_handler)
-            file_handler.close()
+        # ── tokenizer & special tokens ─────────────────────────────────
+        tokenizer = AutoTokenizer.from_pretrained(model, do_lower_case=do_lower_case, use_fast=False)
+        if add_new_tokens:
+            cls._add_marker_tokens(tokenizer, task_ner_labels[task])
+
+        special_tokens_path = output_dir_path / "special_tokens.json"
+        if special_tokens_path.exists():
+            with special_tokens_path.open() as f:
+                special_tokens: Dict[str, str] = json.load(f)
+        else:
+            special_tokens = {}
+
+        # ── build eval features (dev set) ─────────────────────────────
+        if do_eval and (do_train or not eval_test):
+            eval_features = cls._convert_examples_to_features(
+                eval_examples, label2id, max_seq_length, tokenizer, special_tokens,
+                unused_tokens=not add_new_tokens,
+            )
+            print("***** Dev *****")
+            print("  Num examples = %d" % len(eval_examples))
+            print("  Batch size = %d" % eval_batch_size)
+            all_input_ids   = torch.tensor([f.input_ids   for f in eval_features], dtype=torch.long)
+            all_input_mask  = torch.tensor([f.input_mask  for f in eval_features], dtype=torch.long)
+            all_segment_ids = torch.tensor([f.segment_ids for f in eval_features], dtype=torch.long)
+            all_label_ids   = torch.tensor([f.label_id    for f in eval_features], dtype=torch.long)
+            all_sub_idx     = torch.tensor([f.sub_idx     for f in eval_features], dtype=torch.long)
+            all_obj_idx     = torch.tensor([f.obj_idx     for f in eval_features], dtype=torch.long)
+            eval_data_tensor  = TensorDataset(all_input_ids, all_input_mask, all_segment_ids,
+                                              all_label_ids, all_sub_idx, all_obj_idx)
+            eval_dataloader   = DataLoader(eval_data_tensor, batch_size=eval_batch_size)
+            eval_label_ids_t  = all_label_ids
+
+        with special_tokens_path.open("w") as f:
+            json.dump(special_tokens, f)
+
+        # ── training ───────────────────────────────────────────────────
+        best_result: Optional[Dict[str, Any]] = None
+        if do_train:
+            train_features = cls._convert_examples_to_features(
+                train_examples, label2id, max_seq_length, tokenizer, special_tokens,
+                unused_tokens=not add_new_tokens,
+            )
+            if train_mode in ("sorted", "random_sorted"):
+                train_features = sorted(train_features, key=lambda f: int(np.sum(f.input_mask)))
+            else:
+                random.shuffle(train_features)
+
+            all_input_ids   = torch.tensor([f.input_ids   for f in train_features], dtype=torch.long)
+            all_input_mask  = torch.tensor([f.input_mask  for f in train_features], dtype=torch.long)
+            all_segment_ids = torch.tensor([f.segment_ids for f in train_features], dtype=torch.long)
+            all_label_ids   = torch.tensor([f.label_id    for f in train_features], dtype=torch.long)
+            all_sub_idx     = torch.tensor([f.sub_idx     for f in train_features], dtype=torch.long)
+            all_obj_idx     = torch.tensor([f.obj_idx     for f in train_features], dtype=torch.long)
+            train_data_tensor = TensorDataset(all_input_ids, all_input_mask, all_segment_ids,
+                                              all_label_ids, all_sub_idx, all_obj_idx)
+            train_dataloader  = DataLoader(train_data_tensor, batch_size=train_batch_size)
+            train_batches     = list(train_dataloader)
+
+            num_train_optimization_steps = len(train_dataloader) * int(num_train_epochs)
+
+            print("***** Training *****")
+            print("  Num examples = %d" % len(train_examples))
+            print("  Batch size = %d" % train_batch_size)
+            print("  Num steps = %d" % num_train_optimization_steps)
+
+            eval_step = max(1, len(train_batches) // eval_per_epoch)
+            print("eval_step=%d, train_batches=%d, eval_per_epoch=%d" % (
+                eval_step, len(train_batches), eval_per_epoch))
+            print("Eval steps = %d" % num_train_optimization_steps)
+
+            lr            = learning_rate
+            relation_model = BertForRelation.from_pretrained(model, cache_dir=None, num_rel_labels=num_labels)
+            if hasattr(relation_model, "bert"):
+                relation_model.bert.resize_token_embeddings(len(tokenizer))
+            elif hasattr(relation_model, "albert"):
+                relation_model.albert.resize_token_embeddings(len(tokenizer))
+            else:
+                raise TypeError("Unknown model class")
+            relation_model.to(device)
+            if n_gpu > 1:
+                relation_model = torch.nn.DataParallel(relation_model)
+
+            param_optimizer = list(relation_model.named_parameters())
+            no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
+            optimizer_grouped_parameters = [
+                {"params": [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)],
+                 "weight_decay": 0.01},
+                {"params": [p for n, p in param_optimizer if     any(nd in n for nd in no_decay)],
+                 "weight_decay": 0.0},
+            ]
+            optimizer = AdamW(optimizer_grouped_parameters, lr=lr)
+            scheduler = get_linear_schedule_with_warmup(
+                optimizer,
+                int(num_train_optimization_steps * warmup_proportion),
+                num_train_optimization_steps,
+            )
+
+            import time as _time
+            start_time  = _time.time()
+            global_step = 0
+            tr_loss     = 0.0
+            nb_tr_steps = 0
+
+            for epoch in range(int(num_train_epochs)):
+                relation_model.train()
+                print("Start epoch #{} (lr = {})...".format(epoch, lr))
+                if train_mode in ("random", "random_sorted"):
+                    random.shuffle(train_batches)
+
+                for step, batch in enumerate(train_batches):
+                    batch = tuple(t.to(device) for t in batch)
+                    inp_ids, inp_mask, seg_ids, lbl_ids, s_idx, o_idx = batch
+                    loss = relation_model(inp_ids, seg_ids, inp_mask, lbl_ids, s_idx, o_idx)
+                    if n_gpu > 1:
+                        loss = loss.mean()
+                    loss.backward()
+                    tr_loss     += loss.item()
+                    nb_tr_steps += 1
+                    optimizer.step()
+                    scheduler.step()
+                    optimizer.zero_grad()
+                    global_step += 1
+
+                    if (step + 1) % eval_step == 0:
+                        print("Epoch: {}, Step: {} / {}, used_time = {:.2f}s, loss = {:.6f}".format(
+                            epoch, step + 1, len(train_batches),
+                            _time.time() - start_time, tr_loss / nb_tr_steps,
+                        ))
+                        if do_eval:
+                            preds_arr, result, _ = cls._evaluate_model(
+                                relation_model, device, eval_dataloader,
+                                eval_label_ids_t, num_labels, e2e_ngold=eval_nrel,
+                            )
+                            relation_model.train()
+                            result.update({"global_step": global_step, "epoch": epoch,
+                                           "learning_rate": lr, "batch_size": train_batch_size})
+                            if best_result is None or result[eval_metric] > best_result[eval_metric]:
+                                best_result = result
+                                print("!!! Best dev %s (lr=%s, epoch=%d): %.2f" % (
+                                    eval_metric, str(lr), epoch, result[eval_metric] * 100.0))
+                                cls._save_trained_model(str(output_dir_path), relation_model, tokenizer)
+                        else:
+                            cls._save_trained_model(str(output_dir_path), relation_model, tokenizer)
+
+                print("Epoch: {}, Step: {} / {}, used_time = {:.2f}s, loss = {:.6f}".format(
+                    epoch, step + 1, len(train_batches),
+                    _time.time() - start_time, tr_loss / nb_tr_steps,
+                ))
+                if do_eval:
+                    preds_arr, result, _ = cls._evaluate_model(
+                        relation_model, device, eval_dataloader,
+                        eval_label_ids_t, num_labels, e2e_ngold=eval_nrel,
+                    )
+                    relation_model.train()
+                    result.update({"global_step": global_step, "epoch": epoch,
+                                   "learning_rate": lr, "batch_size": train_batch_size})
+                    if best_result is None or result[eval_metric] > best_result[eval_metric]:
+                        best_result = result
+                        print("!!! Best dev %s (lr=%s, epoch=%d): %.2f" % (
+                            eval_metric, str(lr), epoch, result[eval_metric] * 100.0))
+                        cls._save_trained_model(str(output_dir_path), relation_model, tokenizer)
+                else:
+                    cls._save_trained_model(str(output_dir_path), relation_model, tokenizer)
+
+        # ── final evaluation ───────────────────────────────────────────
+        evaluation_results: Dict[str, Any] = {}
+        if do_eval:
+            print(special_tokens)
+            if eval_test:
+                eval_dataset_obj  = test_dataset_obj   # noqa: F821
+                eval_examples     = test_examples       # noqa: F821
+                eval_features     = cls._convert_examples_to_features(
+                    test_examples, label2id, max_seq_length, tokenizer, special_tokens,
+                    unused_tokens=not add_new_tokens,
+                )
+                eval_nrel = test_nrel                   # noqa: F821
+                print(special_tokens)
+                print("***** Test *****")
+                print("  Num examples = %d" % len(test_examples))
+                print("  Batch size = %d" % eval_batch_size)
+                all_input_ids   = torch.tensor([f.input_ids   for f in eval_features], dtype=torch.long)
+                all_input_mask  = torch.tensor([f.input_mask  for f in eval_features], dtype=torch.long)
+                all_segment_ids = torch.tensor([f.segment_ids for f in eval_features], dtype=torch.long)
+                all_label_ids   = torch.tensor([f.label_id    for f in eval_features], dtype=torch.long)
+                all_sub_idx     = torch.tensor([f.sub_idx     for f in eval_features], dtype=torch.long)
+                all_obj_idx     = torch.tensor([f.obj_idx     for f in eval_features], dtype=torch.long)
+                eval_data_tensor = TensorDataset(all_input_ids, all_input_mask, all_segment_ids,
+                                                 all_label_ids, all_sub_idx, all_obj_idx)
+                eval_dataloader  = DataLoader(eval_data_tensor, batch_size=eval_batch_size)
+                eval_label_ids_t = all_label_ids
+
+            relation_model = BertForRelation.from_pretrained(str(output_dir_path), num_rel_labels=num_labels)
+            relation_model.to(device)
+            preds_arr, evaluation_results, _ = cls._evaluate_model(
+                relation_model, device, eval_dataloader,
+                eval_label_ids_t, num_labels, e2e_ngold=eval_nrel,
+            )
+
+            print("*** Evaluation Results ***")
+            for key in sorted(evaluation_results.keys()):
+                print("  %s = %s" % (key, str(evaluation_results[key])))
+
+            cls._print_pred_json(
+                eval_dataset_obj, eval_examples, preds_arr, id2label,
+                str(output_dir_path / prediction_file),
+            )
+
+        return {
+            "output_dir": str(output_dir_path),
+            "prediction_file": str(output_dir_path / prediction_file),
+            "task": task,
+            "model": model,
+            **evaluation_results,
+        }
+
+    @staticmethod
+    def _save_trained_model(output_dir: str, model: Any, tokenizer: AutoTokenizer) -> None:
+        import os
+        WEIGHTS_NAME = "pytorch_model.bin"
+        CONFIG_NAME  = "config.json"
+        if not os.path.exists(output_dir):
+            os.mkdir(output_dir)
+        print("Saving model to %s" % output_dir)
+        model_to_save = model.module if hasattr(model, "module") else model
+        torch.save(model_to_save.state_dict(), os.path.join(output_dir, WEIGHTS_NAME))
+        model_to_save.config.to_json_file(os.path.join(output_dir, CONFIG_NAME))
+        tokenizer.save_vocabulary(output_dir)
 
     @classmethod
     def set_task(
@@ -1299,4 +1747,303 @@ class RexKGRelationExtractionRadiology(BaseTask):
         output_path.parent.mkdir(parents=True, exist_ok=True)
         with output_path.open("w", encoding="utf-8") as f:
             f.write("\n".join(json.dumps(doc) for doc in docs))
+
+
+class RexKGReverseStructureRadiology(BaseTask):
+    """Reverse-structure ReXKG relation predictions into flattened JSON docs.
+
+    This task converts relation extraction outputs into a compact document-level
+    format used by downstream graph construction and inspection workflows.
+    """
+
+    task_name: str = "rexkg_reverse_structure_radiology"
+    input_schema: Dict[str, Union[str, Type]] = {"input_json_file": TextProcessor}
+    output_schema: Dict[str, Union[str, Type]] = {"processed_docs": SequenceProcessor}
+
+    def __call__(self, patient: Patient) -> List[Dict]:
+        """This task is pipeline-oriented and does not operate on Patient events."""
+        raise NotImplementedError(
+            "RexKGReverseStructureRadiology is a pipeline-style task. "
+            "Use RexKGReverseStructureRadiology.set_task(...) instead."
+        )
+
+    @classmethod
+    def run_reverse_structure_pipeline(
+        cls,
+        input_json_file: str,
+        save_json_file: str,
+    ) -> List[Dict[str, Any]]:
+        """Convert ReXKG relation prediction records into flattened JSON output."""
+        data = cls._load_prediction_records(input_json_file)
+
+        processed_data: List[Dict[str, Any]] = []
+        for doc in data:
+            sentence_tokens = (doc.get("sentences") or [[]])[0]
+            sentence_text = " ".join(sentence_tokens)
+
+            ner_candidates = cls._resolve_candidates(doc, "predicted_ner", "ner")
+            rel_candidates = cls._resolve_candidates(doc, "predicted_relations", "relations")
+
+            predicted_entities: Dict[str, str] = {}
+            for entity_info in ner_candidates:
+                if not entity_info or len(entity_info) < 3:
+                    continue
+                start, end, entity_type = int(entity_info[0]), int(entity_info[1]), str(entity_info[2])
+                entity_text = " ".join(sentence_tokens[start : end + 1])
+                predicted_entities[entity_text] = entity_type
+
+            predicted_relations: List[Dict[str, str]] = []
+            for relation_info in rel_candidates:
+                if not relation_info or len(relation_info) < 5:
+                    continue
+                start1, end1, start2, end2, relation_type = relation_info
+                entity1_text = " ".join(sentence_tokens[int(start1) : int(end1) + 1])
+                entity2_text = " ".join(sentence_tokens[int(start2) : int(end2) + 1])
+                predicted_relations.append(
+                    {
+                        "source_entity": entity1_text,
+                        "target_entity": entity2_text,
+                        "type": str(relation_type),
+                    }
+                )
+
+            processed_doc = {
+                "doc_key": doc.get("doc_key"),
+                "sentences": sentence_text,
+                "entities": predicted_entities,
+                "relations": predicted_relations,
+            }
+            processed_data.append(processed_doc)
+
+        save_path = Path(save_json_file).expanduser().resolve()
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        with save_path.open("w", encoding="utf-8") as output_file:
+            json.dump(processed_data, output_file, ensure_ascii=False, indent=4)
+
+        return processed_data
+
+    @classmethod
+    def set_task(
+        cls,
+        input_json_file: str,
+        save_json_file: str,
+    ) -> List[Dict[str, Any]]:
+        """Compatibility entry-point for reverse-structure notebook workflows."""
+        return cls.run_reverse_structure_pipeline(
+            input_json_file=input_json_file,
+            save_json_file=save_json_file,
+        )
+
+    @staticmethod
+    def _load_prediction_records(input_json_file: str) -> List[Dict[str, Any]]:
+        p = Path(input_json_file).expanduser().resolve()
+        if not p.exists():
+            raise FileNotFoundError(f"Input prediction file not found: {p}")
+
+        raw = p.read_text(encoding="utf-8")
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            records: List[Dict[str, Any]] = []
+            for line in raw.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                records.append(json.loads(line))
+            return records
+
+        if isinstance(data, list):
+            return data
+        if isinstance(data, dict):
+            return [data]
+        raise ValueError(f"Unsupported prediction format in {p}")
+
+    @staticmethod
+    def _resolve_candidates(doc: Dict[str, Any], key_pred: str, key_gold: str) -> List[Any]:
+        pred = doc.get(key_pred, [[]])
+        if pred and isinstance(pred, list) and len(pred) > 0 and pred[0]:
+            return pred[0]
+
+        gold = doc.get(key_gold, [[]])
+        if gold and isinstance(gold, list) and len(gold) > 0:
+            return gold[0]
+        return []
+
+
+class RexKGGetEntitiesRadiology(BaseTask):
+    """Generate entity and relation CSV summaries from reverse-structured JSON.
+
+    This class mirrors the behavior of ``src/kg_construct/code/get_entities.py``
+    but exposes it via the PyHealth task-style API.
+    """
+
+    task_name: str = "rexkg_get_entities_radiology"
+    input_schema: Dict[str, Union[str, Type]] = {"ent_pred_mimic_headct": TextProcessor}
+    output_schema: Dict[str, Union[str, Type]] = {"all_entities_csv": TextProcessor}
+
+    def __call__(self, patient: Patient) -> List[Dict]:
+        raise NotImplementedError(
+            "RexKGGetEntitiesRadiology is a pipeline-style task. "
+            "Use RexKGGetEntitiesRadiology.set_task(...) instead."
+        )
+
+    @classmethod
+    def set_task(
+        cls,
+        ent_pred_mimic_headct: str,
+        ent_real_pred_mimic_headct: str,
+        save_entity_dir: str = "./entities",
+        save_real_dir: str = "./relation",
+    ) -> Dict[str, str]:
+        """Compatibility entrypoint that matches get_entities.py arguments."""
+        return cls.run_get_entities_pipeline(
+            ent_pred_mimic_headct=ent_pred_mimic_headct,
+            ent_real_pred_mimic_headct=ent_real_pred_mimic_headct,
+            save_entity_dir=save_entity_dir,
+            save_real_dir=save_real_dir,
+        )
+
+    @classmethod
+    def run_get_entities_pipeline(
+        cls,
+        ent_pred_mimic_headct: str,
+        ent_real_pred_mimic_headct: str,
+        save_entity_dir: str = "./entities",
+        save_real_dir: str = "./relation",
+    ) -> Dict[str, str]:
+        """Run entity and relation aggregation identical to get_entities.py."""
+        entity_dir = Path(save_entity_dir).expanduser().resolve()
+        real_dir = Path(save_real_dir).expanduser().resolve()
+        entity_dir.mkdir(parents=True, exist_ok=True)
+        real_dir.mkdir(parents=True, exist_ok=True)
+
+        all_entities_csv = entity_dir / "all_entities.csv"
+        all_relations_csv = real_dir / "all_relations.csv"
+
+        cls._extract_entities(
+            json_file=str(Path(ent_pred_mimic_headct).expanduser().resolve()),
+            output_csv=str(all_entities_csv),
+        )
+        cls._filter_max_count(str(all_entities_csv), str(entity_dir))
+        cls._extract_relations(
+            input_json_file=str(Path(ent_real_pred_mimic_headct).expanduser().resolve()),
+            save_csv_file=str(all_relations_csv),
+        )
+
+        return {
+            "all_entities_csv": str(all_entities_csv),
+            "all_relations_csv": str(all_relations_csv),
+            "save_entity_dir": str(entity_dir),
+            "save_real_dir": str(real_dir),
+        }
+
+    @staticmethod
+    def _is_number(s: str) -> bool:
+        return s.isdigit()
+
+    @staticmethod
+    def _has_measurement_units(text: str) -> bool:
+        pattern = r"\d+\s*(mm|cm|m|km|in|ft|yd|mi)"
+        matches = re.findall(pattern, text)
+        return bool(matches)
+
+    @staticmethod
+    def _contains_digit(s: str) -> bool:
+        return any(char.isdigit() for char in s)
+
+    @classmethod
+    def _extract_entities(cls, json_file: str, output_csv: str) -> None:
+        with open(json_file, "r", encoding="utf-8") as file:
+            data = json.load(file)
+
+        all_entities: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+
+        for entry in data:
+            entities = entry.get("entities", {})
+            for entity, category in entities.items():
+                entity = entity.lower()
+                if "cm" in entity.split() or "mm" in entity.split() or "-cm" in entity or "-mm" in entity:
+                    category = "size"
+                elif cls._has_measurement_units(entity) or cls._is_number(entity):
+                    category = "size"
+                else:
+                    category = category.split("_")[0]
+
+                if cls._contains_digit(entity) and category != "size":
+                    continue
+
+                all_entities[entity][category] += 1
+
+        sorted_entities = sorted(all_entities.items(), key=lambda x: sum(x[1].values()), reverse=True)
+
+        with open(output_csv, "w", newline="", encoding="utf-8") as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(["entity", "entity_type", "count"])
+            for entity, types_count in sorted_entities:
+                sorted_types_count = sorted(types_count.items(), key=lambda kv: kv[1], reverse=True)
+                for entity_type, count in sorted_types_count:
+                    writer.writerow([entity, entity_type, count])
+
+    @staticmethod
+    def _filter_max_count(csv_file: str, save_entity_dir: str) -> None:
+        entity_max_count: Dict[str, Dict[str, Union[str, int]]] = {}
+        with open(csv_file, "r", newline="", encoding="utf-8") as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                entity = row["entity"]
+                count = int(row["count"])
+                if entity not in entity_max_count or count > int(entity_max_count[entity]["count"]):
+                    entity_max_count[entity] = {
+                        "entity_type": row["entity_type"],
+                        "count": count,
+                    }
+
+        output_all_entities = Path(save_entity_dir) / "all_entities.csv"
+        with open(output_all_entities, "w", newline="", encoding="utf-8") as csvfile:
+            fieldnames = ["entity", "entity_type", "count"]
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            for entity, data in entity_max_count.items():
+                writer.writerow(
+                    {
+                        "entity": entity,
+                        "entity_type": str(data["entity_type"]),
+                        "count": int(data["count"]),
+                    }
+                )
+
+        entity_types = {str(row["entity_type"]) for row in entity_max_count.values()}
+        for entity_type in entity_types:
+            csv_file_path = Path(save_entity_dir) / f"{entity_type}.csv"
+            with open(csv_file_path, "w", newline="", encoding="utf-8") as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(["entity", "count"])
+                for entity, data in entity_max_count.items():
+                    if data["entity_type"] == entity_type:
+                        writer.writerow([entity, int(data["count"])])
+
+    @staticmethod
+    def _extract_relations(input_json_file: str, save_csv_file: str) -> None:
+        with open(input_json_file, "r", encoding="utf-8") as file:
+            input_data = json.load(file)
+
+        relation_rows: List[List[str]] = []
+        for data_idx in tqdm(input_data):
+            relations = data_idx.get("relations", {})
+            for relation_idx in relations:
+                relation_rows.append(
+                    [
+                        relation_idx["source_entity"].lower(),
+                        relation_idx["target_entity"].lower(),
+                        relation_idx["type"],
+                    ]
+                )
+
+        count_dict = Counter(tuple(row) for row in relation_rows)
+
+        with open(save_csv_file, "w", newline="", encoding="utf-8") as csvfile:
+            csvwriter = csv.writer(csvfile)
+            csvwriter.writerow(["source_entity", "target_entity", "type", "count"])
+            for key, value in sorted(count_dict.items(), key=lambda x: x[1], reverse=True):
+                csvwriter.writerow([key[0], key[1], key[2], value])
 
