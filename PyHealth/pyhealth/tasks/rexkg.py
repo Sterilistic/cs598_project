@@ -1369,6 +1369,7 @@ class RexKGRelationExtractionRadiology(BaseTask):
 
         # ── training ───────────────────────────────────────────────────
         best_result: Optional[Dict[str, Any]] = None
+        relation_model_for_eval: Optional[Any] = None
         if do_train:
             train_features = cls._convert_examples_to_features(
                 train_examples, label2id, max_seq_length, tokenizer, special_tokens,
@@ -1411,6 +1412,7 @@ class RexKGRelationExtractionRadiology(BaseTask):
             else:
                 raise TypeError("Unknown model class")
             relation_model.to(device)
+            relation_model_for_eval = relation_model
             if n_gpu > 1:
                 relation_model = torch.nn.DataParallel(relation_model)
 
@@ -1523,7 +1525,17 @@ class RexKGRelationExtractionRadiology(BaseTask):
                 eval_dataloader  = DataLoader(eval_data_tensor, batch_size=eval_batch_size)
                 eval_label_ids_t = all_label_ids
 
-            relation_model = BertForRelation.from_pretrained(str(output_dir_path), num_rel_labels=num_labels)
+            if relation_model_for_eval is not None:
+                relation_model = relation_model_for_eval
+            else:
+                try:
+                    relation_model = BertForRelation.from_pretrained(str(output_dir_path), num_rel_labels=num_labels)
+                except RuntimeError as exc:
+                    raise RuntimeError(
+                        "Failed to load relation checkpoint from output_dir. "
+                        "This usually means the directory contains an older checkpoint from a different model architecture. "
+                        "Use a fresh output_dir (or delete old files in it) and run again."
+                    ) from exc
             relation_model.to(device)
             preds_arr, evaluation_results, _ = cls._evaluate_model(
                 relation_model, device, eval_dataloader,
