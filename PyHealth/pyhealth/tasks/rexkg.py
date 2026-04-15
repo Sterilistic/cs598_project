@@ -2318,240 +2318,243 @@ class RexKGGPT4RelationExtractionRadiology(BaseTask):
         cls,
         input_json_file: str,
         save_json_file: str,
+        post_proccess_json: str,
         api_key: Optional[str] = None,
         api_base: Optional[str] = None,
         model: str = "gpt-4o-2024-05-13",
-        postprocess_json_file: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Run GPT-4 relation extraction over entity JSON and persist outputs."""
+        
         input_path = Path(input_json_file).expanduser().resolve()
         if not input_path.exists():
             raise FileNotFoundError(f"Input JSON file not found: {input_path}")
 
         save_path = Path(save_json_file).expanduser().resolve()
         save_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # apply_openai_credentials(
+        #     api_key=api_key,
+        #     api_base=api_base,
+        # )
 
-        summary_cost = cls._evaluate_notes(
-            json_file=str(input_path),
-            save_json_file=str(save_path),
-            api_key=api_key,
-            api_base=api_base,
-            model=model,
-        )
 
-       
 
-        post_path_resolved: Optional[Path] = None
-        if postprocess_json_file is not None:
-            post_path_resolved = Path(postprocess_json_file).expanduser().resolve()
-            post_path_resolved.parent.mkdir(parents=True, exist_ok=True)
-            cls.postprocess_json(str(save_path), str(post_path_resolved))
+        # input_json_file_holder = input_json_file
+        # save_json_file_holder = save_json_file
+        # postprocess_json_file_holder = post_proccess_json
+
+        evaluate_notes(input_json_file,save_json_file)
+        postprocess_json(save_json_file,post_proccess_json)
+
 
         return {
             "input_json_file": str(input_path),
             "save_json_file": str(save_path),
-            "postprocess_json_file": str(post_path_resolved) if post_path_resolved else None,
-            "summary_cost": summary_cost,
+            "postprocess_json_file": post_proccess_json,
+            # "summary_cost": summary_cost,
             "model": model,
         }
 
-    @classmethod
-    def _get_messages(cls, query: str) -> List[Dict[str, str]]:
-        messages: List[Dict[str, str]] = [
-            {
-                "role": "system",
-                "content": "You are a radiologist performing relation extraction of entities from the FINDINGS and IMPRESSION sections in the radiology report.                     Here a clinical term can be in ['anatomy','disorder_present','disorder_notpresent','procedures','devices','concept', 'devices_present','devices_notpresent', 'size'].                     And the relation can be in ['modify', 'located_at', 'suggestive_of'].                     'suggestive_of' means the source entity (findings) may suggest the target entity (disease).                     'located_at' means the source entity is located at the target entity.                     'modify' denotes the source entity modifies the target entity.                     Every time there is a 'modify' relationship between concept and anatomy, the direction should be concept -> anatomy.                     For example, right pleural effusion , 'right' (concept), modify  'pleural' (anatomy), 'effusion' (disorder) located_at 'pleural' (anatomy).                     Please ensure the direction of source/target entities is maintained correctly.                     Given a piece of radiology text input in the JSON format:                     {'sentence':{'entity':'entity_type'},'sentence':{'entity':'entity_type'}}                     Please reply with the following JSON format:                     {'sentence':[{source entity:'target entity',relation:'relation'},{source entity:'target entity',relation:'relation'}]}                    ",
-            }
-        ]
-
-        for sample in cls._FEWSHOT_SAMPLES:
-            messages.append({"role": "user", "content": sample["context"]})
-            messages.append({"role": "assistant", "content": sample["response"]})
-
-        messages.append({"role": "user", "content": query})
-        return messages
-
-    @staticmethod
-    def _estimate_cost(prompt_tokens: int, completion_tokens: int) -> float:
-        input_cost = 0.005
-        output_cost = 0.015
-        return input_cost * prompt_tokens / 1000 + output_cost * completion_tokens / 1000
-
-    @classmethod
-    def _chatgpt_input(
-        cls,
-        messages: List[Dict[str, str]],
-        api_key: Optional[str],
-        api_base: Optional[str],
-        model: str,
-    ) -> Tuple[Union[Dict[str, Any], str], float]:
-        
 
 
-   
-   
+def apply_openai_credentials(api_key=None, api_base=None):
+    # openai.api_key = api_key
+    # if api_base:
+    #     normalized_base = api_base.strip()
+    #     if not re.match(r"^https?://", normalized_base):
+    #         normalized_base = f"https://{normalized_base}"
+    #     if normalized_base.endswith("/"):
+    #         normalized_base = normalized_base[:-1]
+    #     if not normalized_base.endswith("/v1"):
+    #         normalized_base = f"{normalized_base}/v1"
+    #     openai.api_base = normalized_base
+    openai.api_key = ""
+    # openai.api_base = "https://azureopenai-instance-uiuc.openai.azure.com/"
+
+def get_messages(query):
+    fewshot_samples = [
+        {
+            'context': "{'Bones are stable with mild degenerative changes of the spine.':{'Bones': 'anatomy', 'stable': 'concept', 'mild': 'concept', 'degenerative changes': 'disorder_present', 'spine': 'anatomy'}}",
+            'response': "{'Bones are stable with mild degenerative changes of the spine.': [{'stable': 'Bones', 'relation':'modify'}, {'mild':'degenerative changes', 'relation':'modify'}, {'degenerative changes':'spine','relation':'located_at'}]}"
+        },
+        {
+            'context': "{'A dense retrocardiac opacity remains present with slight blunting of the left costophrenic angle, suggestive of a small effusion.': {'dense': 'concept','retrocardiac': 'anatomy','opacity': 'disorder_present','slight': 'concept','blunting': 'disorder_present','left': 'concept','costophrenic': 'anatomy','angle': 'anatomy','small': 'concept','effusion': 'disorder_present'}}",
+            'response': "{'A dense retrocardiac opacity remains present with slight blunting of the left costophrenic angle, suggestive of a small effusion.': [{'dense': 'opacity', 'relation': 'modify'}, {'opacity': 'retrocardiac', 'relation': 'located_at'}, {'slight': 'blunting', 'relation': 'modify'}, {'blunting': 'angle', 'relation': 'modify'}, {'left': 'costophrenic', 'relation': 'modify'}, {'small': 'effusion', 'relation': 'modify'}, {'effusion': 'costophrenic', 'relation': 'located_at'},{'opacity':'effusion','relation':'suggestive_of'},{'blunting':'effusion','relation':'suggestive_of'}]}"
+        }
+    ]
+    
+    messages = [ 
+            {"role": "system", "content": "You are a radiologist performing relation extraction of entities from the FINDINGS and IMPRESSION sections in the radiology report. \
+                    Here a clinical term can be in ['anatomy','disorder_present','disorder_notpresent','procedures','devices','concept', 'devices_present','devices_notpresent', 'size']. \
+                    And the relation can be in ['modify', 'located_at', 'suggestive_of']. \
+                    'suggestive_of' means the source entity (findings) may suggest the target entity (disease). \
+                    'located_at' means the source entity is located at the target entity. \
+                    'modify' denotes the source entity modifies the target entity. \
+                    Every time there is a 'modify' relationship between concept and anatomy, the direction should be concept -> anatomy. \
+                    For example, right pleural effusion , 'right' (concept), modify  'pleural' (anatomy), 'effusion' (disorder) located_at 'pleural' (anatomy). \
+                    Please ensure the direction of source/target entities is maintained correctly. \
+                    Given a piece of radiology text input in the JSON format: \
+                    {'sentence':{'entity':'entity_type'},'sentence':{'entity':'entity_type'}} \
+                    Please reply with the following JSON format: \
+                    {'sentence':[{source entity:'target entity',relation:'relation'},{source entity:'target entity',relation:'relation'}]} \
+                "
+                }
+            ]
+    
+    for sample in fewshot_samples:
+        messages.append({"role":"user", "content":sample['context']})
+        messages.append({"role":"assistant", "content":sample['response']})
+    messages.append({"role":"user", "content":query})
+    return messages
 
 
-        # openai.api_key = api_key
-        # if api_base:
-        #     normalized_base = api_base.strip()
-        #     if not re.match(r"^https?://", normalized_base):
-        #         normalized_base = f"https://{normalized_base}"
-        #     if normalized_base.endswith("/"):
-        #         normalized_base = normalized_base[:-1]
-        #     if not normalized_base.endswith("/v1"):
-        #         normalized_base = f"{normalized_base}/v1"
-        #     openai.api_base = normalized_base
-        # openai.api_key = api_key
-        # openai.api_base = api_base
-
-        response = openai.ChatCompletion.create(
-            model=model,
-            messages=messages,
-            response_format={"type": "json_object"},
-        )
-        try:
-            res = response["choices"][0]["message"]["content"]
-            cost = cls._estimate_cost(
-                response["usage"]["prompt_tokens"],
-                response["usage"]["completion_tokens"],
-            )
-            return json.loads(res), cost
-        except Exception:
-            res = response["choices"][0]["message"]["content"]
-            cost = cls._estimate_cost(
-                response["usage"]["prompt_tokens"],
-                response["usage"]["completion_tokens"],
-            )
-            return res, cost
-
-    @classmethod
-    def _test_prompt(
-        cls,
-        input_json: str,
-        api_key: Optional[str],
-        api_base: Optional[str],
-        model: str,
-    ) -> Tuple[Union[Dict[str, Any], str], float]:
-        messages = cls._get_messages(input_json)
-        return cls._chatgpt_input(messages, api_key=api_key, api_base=api_base, model=model)
-
-    @classmethod
-    def _evaluate_notes(
-        cls,
-        json_file: str,
-        save_json_file: str,
-        api_key: Optional[str],
-        api_base: Optional[str],
-        model: str,
-    ) -> float:
+def estimate_cost(prompt_tokens, completion_tokens):
+    input_cost = 0.005
+    output_cost = 0.015
+    return (input_cost*prompt_tokens/1000 + output_cost*completion_tokens/1000)
 
 
-        
-        # Set credentials ONCE at the start, like the legacy script
-        _apply_openai_credentials(openai, api_key, api_base)
-        
-        with open(json_file, "r") as file:
-            json_data = json.load(file)
-        note_id_list = list(json_data.keys())
-        summary_cost = 0.0
 
-        try:
-            with open(save_json_file, "r") as file:
-                save_data_dict = json.load(file)
-        except Exception:
-            save_data_dict = {}
+def chatgpt_input(messages):
+    print("here1")
+    # client = AzureOpenAI(
+    #     api_version="2024-12-01-preview",
+    #     azure_endpoint="https://azureopenai-instance-uiuc.cognitiveservices.azure.com/",
+    #     api_key=subscription_key,
+    # )
 
-        for select_id in tqdm(note_id_list):
-            if select_id in save_data_dict:
-                pass
-            else:
-                data_dict_idx = json_data[select_id]
-                save_data_dict_idx = data_dict_idx.copy()
-                print(save_data_dict_idx)
-                input_json = data_dict_idx["res"]
 
-                res, cost = cls._test_prompt(
-                    json.dumps(input_json),
-                    api_key=api_key,
-                    api_base=api_base,
-                    model=model,
-                )
-                summary_cost += cost
-                save_data_dict_idx["res_relation"] = res
-                save_data_dict_idx["cost"] = cost
-                save_data_dict[select_id] = save_data_dict_idx
+    openai.api_key = ""
+    openai.api_base = "https://azureopenai-instance-uiuc.cognitiveservices.azure.com/"
+    openai.api_type = "azure"
+    openai.api_version = "2024-12-01-preview"
+    
+    response = openai.ChatCompletion.create(
+        # model="gpt-3.5-turbo",
+        engine = "gpt-4o",
+        # model = "gpt-4o-2024-05-13",
+        messages= messages,
+        response_format={"type": "json_object"}
+    )
+    print("here2")
+    try:
+        res = response["choices"][0]["message"]["content"]
+        cost = estimate_cost(response["usage"]["prompt_tokens"],response["usage"]["completion_tokens"])
+        return json.loads(res),cost
+    except:
 
-            with open(save_json_file, "w") as outfile:
-                json.dump(save_data_dict, outfile, indent=4)
+        res = response["choices"][0]["message"]["content"]
+        cost = estimate_cost(response["usage"]["prompt_tokens"],response["usage"]["completion_tokens"])
+        return res,cost
 
-        print("SUMMARY COST: ", summary_cost)
-        return summary_cost
 
-    @staticmethod
-    def convert_json_format(input_dict: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        if len(input_dict) == 2:
-            source_entity, target_entity = input_dict.items()
-            return {
-                "source entity": source_entity[0],
-                "target entity": input_dict[source_entity[0]],
-                "relation": input_dict[target_entity[0]],
-            }
-        elif len(input_dict) == 3:
-            if "source" in input_dict:
-                input_dict["source entity"] = input_dict["source"]
-                input_dict["target entity"] = input_dict["target"]
-                del input_dict["source"]
-                del input_dict["target"]
-            return input_dict
+def test_prompt(input_json):
+    print("here 0")
+    messages = get_messages(input_json)
+    print("here 3")
+    res,cost = chatgpt_input(messages)
+    return res,cost
+
+
+def evaluate_notes(json_file,save_json_file):  
+    
+    with open(json_file, 'r') as file:
+        json_data = json.load(file)
+    note_id_list = list(json_data.keys())
+    summary_cost = 0
+    
+    try:
+        with open(save_json_file, 'r') as file:
+            save_data_dict = json.load(file)
+    except:
+        save_data_dict = {}
+    
+    for select_id in tqdm(note_id_list):
+        if select_id in save_data_dict:
+            pass 
         else:
-            print("Error:", input_dict)
-            return None
-
-    @classmethod
-    def flatten_dict(cls, d: Dict[str, Any]) -> Dict[str, Any]:
-        flat_dict: Dict[str, Any] = {}
-
-        for key, value in d.items():
-            if isinstance(value, dict):
-                flat_dict.update(cls.flatten_dict(value))
-            else:
-                flat_dict[key] = value
-
-        return flat_dict
-
-    @classmethod
-    def postprocess_json(cls, input_json_file: str, save_json_file: str) -> None:
-        with open(input_json_file, "r") as file:
-            json_data = json.load(file)
-        note_id_list = list(json_data.keys())
-
-        save_data_dict: Dict[str, Any] = {}
-        for select_id in tqdm(note_id_list):
             data_dict_idx = json_data[select_id]
             save_data_dict_idx = data_dict_idx.copy()
-            res_dict_idx = data_dict_idx["res"]
-            res_relation_dict_idx = data_dict_idx["res_relation"]
-            save_res_relation_dict_idx = res_relation_dict_idx.copy()
-            sentence_list = list(res_dict_idx.keys())
-            relation_sentence_list = list(res_relation_dict_idx.keys())
+            print("input_json: ", data_dict_idx['res'])   
 
-            if len(sentence_list) != len(relation_sentence_list):
-                pass
-            else:
-                for sentence in res_dict_idx:
-                    res_dict_idx[sentence] = cls.flatten_dict(res_dict_idx[sentence])
-                for sentence in res_relation_dict_idx:
-                    sentence_relation_list = res_relation_dict_idx[sentence]
-                    save_sentence_relation_list = []
-                    for sentence_relation_dict in sentence_relation_list:
-                        save_sentence_relation_dict = cls.convert_json_format(sentence_relation_dict)
-                        if save_sentence_relation_dict:
-                            save_sentence_relation_list.append(save_sentence_relation_dict)
-                    save_res_relation_dict_idx[sentence] = save_sentence_relation_list
-                save_data_dict_idx["res_relation"] = save_res_relation_dict_idx
-                save_data_dict[select_id] = save_data_dict_idx
+            input_json = data_dict_idx['res']
 
-        with open(save_json_file, "w") as outfile:
-            json.dump(save_data_dict, outfile, indent=4)
+            res,cost = test_prompt(json.dumps(input_json))
+            summary_cost += cost
+            save_data_dict_idx['res_relation'] = res
+            save_data_dict_idx['cost'] = cost
+            save_data_dict[select_id] = save_data_dict_idx
+            
+        with open(save_json_file, 'w') as outfile:
+            json.dump(save_data_dict, outfile, indent=4) 
+    print('SUMMARY COST: ',summary_cost)
+
+
+def convert_json_format(input_dict):
+    if len(input_dict) == 2:
+        source_entity, target_entity = input_dict.items()
+        return {
+            "source entity": source_entity[0],
+            "target entity": input_dict[source_entity[0]],
+            "relation": input_dict[target_entity[0]]
+        }
+    elif len(input_dict) == 3:
+        if "source" in input_dict:
+            input_dict["source entity"] = input_dict["source"]
+            input_dict["target entity"] = input_dict["target"]
+            del input_dict["source"]
+            del input_dict["target"]
+        return input_dict
+    else:
+        print('Error:',input_dict)
+        return None
+
+
+def flatten_dict(d):
+    flat_dict = {}
+    
+    for key, value in d.items():
+        if isinstance(value, dict):
+            # 如果值是一个字典，递归展开并合并到当前字典
+            flat_dict.update(flatten_dict(value))
+        else:
+            flat_dict[key] = value
+            
+    return flat_dict
+
+
+def postprocess_json(input_json_file,save_json_file):
+    with open(input_json_file, 'r') as file:
+        json_data = json.load(file)
+    note_id_list = list(json_data.keys())
+    
+    save_data_dict = {}
+    for select_id in tqdm(note_id_list):
+        data_dict_idx = json_data[select_id]
+        save_data_dict_idx = data_dict_idx.copy()
+        res_dict_idx = data_dict_idx['res']
+        res_relation_dict_idx = data_dict_idx['res_relation']
+        save_res_relation_dict_idx = res_relation_dict_idx.copy()
+        sentence_list = list(res_dict_idx.keys())
+        relation_sentence_list = list(res_relation_dict_idx.keys())
+        if len(sentence_list) != len(relation_sentence_list):
+            pass 
+        else:
+            for sentence in res_dict_idx:
+                res_dict_idx[sentence] = flatten_dict(res_dict_idx[sentence])
+            for sentence in res_relation_dict_idx:
+                sentence_relation_list = res_relation_dict_idx[sentence]
+                # print(sentence,sentence_relation_list)
+                save_sentence_relation_list = []
+                for sentence_relation_dict in sentence_relation_list:
+                    save_sentence_relation_dict = convert_json_format(sentence_relation_dict)
+                    if save_sentence_relation_dict:
+                        save_sentence_relation_list.append(save_sentence_relation_dict)
+                save_res_relation_dict_idx[sentence] = save_sentence_relation_list
+            save_data_dict_idx['res_relation'] = save_res_relation_dict_idx
+            save_data_dict[select_id] = save_data_dict_idx
+    
+    with open(save_json_file, 'w') as outfile:
+            json.dump(save_data_dict, outfile, indent=4) 
+        
 
