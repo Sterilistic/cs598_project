@@ -38,19 +38,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-
-def _apply_openai_credentials(openai_module: Any, api_key: Optional[str], api_base: Optional[str]) -> None:
-    """Apply OpenAI credentials to the openai module, exactly like the legacy gpt4_relation_extraction.py."""
-    openai_module.api_key = api_key
-    if api_base:
-        normalized_base = api_base.strip()
-        if not re.match(r"^https?://", normalized_base):
-            normalized_base = f"https://{normalized_base}"
-        if normalized_base.endswith("/"):
-            normalized_base = normalized_base[:-1]
-        if not normalized_base.endswith("/v1"):
-            normalized_base = f"{normalized_base}/v1"
-        openai_module.api_base = normalized_base
+# gpt loop counter to track gpt inputs lefft to send
+counter = 0
 
 
 class _TokenClsJsonDataset(TorchDataset):
@@ -2111,6 +2100,8 @@ class RexKGGPT4EntityExtractionRadiology(BaseTask):
         end_idx: int = 1000,
         api_key: Optional[str] = None,
         api_base: Optional[str] = None,
+        api_type = str,
+        api_version = str,
         model: str = "gpt-4o-2024-05-13",
     ) -> Dict[str, Any]:
         """Run GPT-4 extraction over section findings.
@@ -2118,6 +2109,11 @@ class RexKGGPT4EntityExtractionRadiology(BaseTask):
         Either ``dataset`` (RexKGCheXpertDataset) or ``input_csv_file`` must be
         provided. If both are provided, ``input_csv_file`` takes precedence.
         """
+        
+        openai.api_type = api_type
+        openai.api_version = api_version
+        openai.api_key = api_key
+        openai.api_base = api_base
         resolved_input = cls._resolve_input_csv(dataset=dataset, input_csv_file=input_csv_file)
         output_path = Path(save_json_file).expanduser().resolve()
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -2184,7 +2180,9 @@ class RexKGGPT4EntityExtractionRadiology(BaseTask):
     ) -> Tuple[Union[Dict[str, Any], str], float]:
 
 
-        _apply_openai_credentials(openai, api_key, api_base)
+        # _apply_openai_credentials(openai, api_key, api_base)
+
+
 
         response = openai.ChatCompletion.create(
             model=model,
@@ -2192,20 +2190,20 @@ class RexKGGPT4EntityExtractionRadiology(BaseTask):
             response_format={"type": "json_object"},
         )
 
-        # try:
-        res = response["choices"][0]["message"]["content"]
-        cost = cls._estimate_cost(
-            response["usage"]["prompt_tokens"],
-            response["usage"]["completion_tokens"],
-        )
-        return json.loads(res), cost
-        # except Exception:
-            # res = response["choices"][0]["message"]["content"]
-            # cost = cls._estimate_cost(
-            #     response["usage"]["prompt_tokens"],
-            #     response["usage"]["completion_tokens"],
-            # )
-            # return res, cost
+        try:
+            res = response["choices"][0]["message"]["content"]
+            cost = cls._estimate_cost(
+                response["usage"]["prompt_tokens"],
+                response["usage"]["completion_tokens"],
+            )
+            return json.loads(res), cost
+        except Exception:
+            res = response["choices"][0]["message"]["content"]
+            cost = cls._estimate_cost(
+                response["usage"]["prompt_tokens"],
+                response["usage"]["completion_tokens"],
+            )
+            return res, cost
 
     @classmethod
     def _test_prompt(
@@ -2232,9 +2230,6 @@ class RexKGGPT4EntityExtractionRadiology(BaseTask):
     ) -> Dict[str, Any]:
      
      
-        
-        # Set credentials ONCE at the start, like the legacy script
-        _apply_openai_credentials(openai, api_key, api_base)
         
         df = pd.read_csv(input_csv_file)[0:1000]
         image_id_list = df["path_to_image"].to_list()
@@ -2319,9 +2314,11 @@ class RexKGGPT4RelationExtractionRadiology(BaseTask):
         input_json_file: str,
         save_json_file: str,
         post_proccess_json: str,
+        api_type: str,
+        api_version: str,
         api_key: Optional[str] = None,
         api_base: Optional[str] = None,
-        model: str = "gpt-4o-2024-05-13",
+        model: str = "gpt-4o",
     ) -> Dict[str, Any]:
         """Run GPT-4 relation extraction over entity JSON and persist outputs."""
         
@@ -2332,19 +2329,14 @@ class RexKGGPT4RelationExtractionRadiology(BaseTask):
         save_path = Path(save_json_file).expanduser().resolve()
         save_path.parent.mkdir(parents=True, exist_ok=True)
         
-        # apply_openai_credentials(
-        #     api_key=api_key,
-        #     api_base=api_base,
-        # )
 
+        openai.api_type = api_type
+        openai.api_version = api_version
+        openai.api_key = api_key
+        openai.api_base = api_base
 
-
-        # input_json_file_holder = input_json_file
-        # save_json_file_holder = save_json_file
-        # postprocess_json_file_holder = post_proccess_json
-
-        evaluate_notes(input_json_file,save_json_file)
-        postprocess_json(save_json_file,post_proccess_json)
+        cls._evaluate_notes(model, input_json_file, save_json_file)
+        cls._postprocess_json(save_json_file, post_proccess_json)
 
 
         return {
@@ -2355,21 +2347,175 @@ class RexKGGPT4RelationExtractionRadiology(BaseTask):
             "model": model,
         }
 
+    @classmethod
+    def _get_messages(cls, query: str) -> List[Dict[str, str]]:
+        messages: List[Dict[str, str]] = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a radiologist performing relation extraction of entities from the FINDINGS and IMPRESSION sections in the radiology report. "
+                    "Here a clinical term can be in ['anatomy','disorder_present','disorder_notpresent','procedures','devices','concept', 'devices_present','devices_notpresent', 'size']. "
+                    "And the relation can be in ['modify', 'located_at', 'suggestive_of']. "
+                    "'suggestive_of' means the source entity (findings) may suggest the target entity (disease). "
+                    "'located_at' means the source entity is located at the target entity. "
+                    "'modify' denotes the source entity modifies the target entity. "
+                    "Every time there is a 'modify' relationship between concept and anatomy, the direction should be concept -> anatomy. "
+                    "For example, right pleural effusion , 'right' (concept), modify  'pleural' (anatomy), 'effusion' (disorder) located_at 'pleural' (anatomy). "
+                    "Please ensure the direction of source/target entities is maintained correctly. "
+                    "Given a piece of radiology text input in the JSON format: "
+                    "{'sentence':{'entity':'entity_type'},'sentence':{'entity':'entity_type'}} "
+                    "Please reply with the following JSON format: "
+                    "{'sentence':[{source entity:'target entity',relation:'relation'},{source entity:'target entity',relation:'relation'}]}"
+                ),
+            }
+        ]
+        for sample in cls._FEWSHOT_SAMPLES:
+            messages.append({"role": "user", "content": sample["context"]})
+            messages.append({"role": "assistant", "content": sample["response"]})
+        messages.append({"role": "user", "content": query})
+        return messages
 
+    @staticmethod
+    def _estimate_cost(prompt_tokens: int, completion_tokens: int) -> float:
+        input_cost = 0.005
+        output_cost = 0.015
+        return input_cost * prompt_tokens / 1000 + output_cost * completion_tokens / 1000
 
-def apply_openai_credentials(api_key=None, api_base=None):
-    # openai.api_key = api_key
-    # if api_base:
-    #     normalized_base = api_base.strip()
-    #     if not re.match(r"^https?://", normalized_base):
-    #         normalized_base = f"https://{normalized_base}"
-    #     if normalized_base.endswith("/"):
-    #         normalized_base = normalized_base[:-1]
-    #     if not normalized_base.endswith("/v1"):
-    #         normalized_base = f"{normalized_base}/v1"
-    #     openai.api_base = normalized_base
-    openai.api_key = ""
-    # openai.api_base = "https://azureopenai-instance-uiuc.openai.azure.com/"
+    @classmethod
+    def _chatgpt_input(cls, model: str, messages: list) -> tuple:
+        response = openai.ChatCompletion.create(
+            engine=model,
+            messages=messages,
+            response_format={"type": "json_object"},
+        )
+        try:
+            res = response["choices"][0]["message"]["content"]
+            cost = cls._estimate_cost(
+                response["usage"]["prompt_tokens"],
+                response["usage"]["completion_tokens"],
+            )
+            return json.loads(res), cost
+        except Exception:
+            res = response["choices"][0]["message"]["content"]
+            cost = cls._estimate_cost(
+                response["usage"]["prompt_tokens"],
+                response["usage"]["completion_tokens"],
+            )
+            return res, cost
+
+    @classmethod
+    def _test_prompt(cls, model: str, input_json: str) -> tuple:
+        messages = cls._get_messages(input_json)
+        return cls._chatgpt_input(model, messages)
+
+    @classmethod
+    def _evaluate_notes(cls, model: str, json_file: str, save_json_file: str) -> None:
+        with open(json_file, "r") as file:
+            json_data = json.load(file)
+        note_id_list = list(json_data.keys())
+        summary_cost = 0
+
+        try:
+            with open(save_json_file, "r") as file:
+                save_data_dict = json.load(file)
+        except Exception:
+            save_data_dict = {}
+
+        counter = 0
+        for select_id in note_id_list:
+            if counter % 100 == 0:
+                print("Extracting relation ", counter, " out of ", len(note_id_list))
+            counter += 1
+
+            if select_id in save_data_dict:
+                pass
+            else:
+                data_dict_idx = json_data[select_id]
+                save_data_dict_idx = data_dict_idx.copy()
+                if counter % 100 == 0:
+                    print("using input record ", counter, " out of 1000")
+                    print("input_json: ", data_dict_idx["res"])
+
+                input_json = data_dict_idx["res"]
+                res, cost = cls._test_prompt(model, json.dumps(input_json))
+                summary_cost += cost
+                save_data_dict_idx["res_relation"] = res
+                save_data_dict_idx["cost"] = cost
+                save_data_dict[select_id] = save_data_dict_idx
+
+            with open(save_json_file, "w") as outfile:
+                json.dump(save_data_dict, outfile, indent=4)
+        print("SUMMARY COST: ", summary_cost)
+
+    @staticmethod
+    def _convert_json_format(input_dict: dict):
+        if len(input_dict) == 2:
+            source_entity, target_entity = input_dict.items()
+            return {
+                "source entity": source_entity[0],
+                "target entity": input_dict[source_entity[0]],
+                "relation": input_dict[target_entity[0]],
+            }
+        elif len(input_dict) == 3:
+            if "source" in input_dict:
+                input_dict["source entity"] = input_dict["source"]
+                input_dict["target entity"] = input_dict["target"]
+                del input_dict["source"]
+                del input_dict["target"]
+            return input_dict
+        else:
+            print("Error:", input_dict)
+            return None
+
+    @classmethod
+    def _flatten_dict(cls, d: dict) -> dict:
+        flat_dict = {}
+        for key, value in d.items():
+            if isinstance(value, dict):
+                flat_dict.update(cls._flatten_dict(value))
+            else:
+                flat_dict[key] = value
+        return flat_dict
+
+    @classmethod
+    def _postprocess_json(cls, input_json_file: str, save_json_file: str) -> None:
+        with open(input_json_file, "r") as file:
+            json_data = json.load(file)
+        note_id_list = list(json_data.keys())
+
+        save_data_dict = {}
+        post_counter = 0
+        for select_id in note_id_list:
+            if post_counter % 100 == 0:
+                print("Post processing: ", post_counter, " out of ", 1000)
+
+            data_dict_idx = json_data[select_id]
+            save_data_dict_idx = data_dict_idx.copy()
+            res_dict_idx = data_dict_idx["res"]
+            res_relation_dict_idx = data_dict_idx["res_relation"]
+            save_res_relation_dict_idx = res_relation_dict_idx.copy()
+            sentence_list = list(res_dict_idx.keys())
+            relation_sentence_list = list(res_relation_dict_idx.keys())
+            if len(sentence_list) != len(relation_sentence_list):
+                pass
+            else:
+                for sentence in res_dict_idx:
+                    res_dict_idx[sentence] = cls._flatten_dict(res_dict_idx[sentence])
+                for sentence in res_relation_dict_idx:
+                    sentence_relation_list = res_relation_dict_idx[sentence]
+                    save_sentence_relation_list = []
+                    for sentence_relation_dict in sentence_relation_list:
+                        save_sentence_relation_dict = cls._convert_json_format(sentence_relation_dict)
+                        if save_sentence_relation_dict:
+                            save_sentence_relation_list.append(save_sentence_relation_dict)
+                    save_res_relation_dict_idx[sentence] = save_sentence_relation_list
+                save_data_dict_idx["res_relation"] = save_res_relation_dict_idx
+                save_data_dict[select_id] = save_data_dict_idx
+            post_counter += 1
+
+        with open(save_json_file, "w") as outfile:
+            json.dump(save_data_dict, outfile, indent=4)
+
 
 def get_messages(query):
     fewshot_samples = [
@@ -2415,28 +2561,14 @@ def estimate_cost(prompt_tokens, completion_tokens):
 
 
 
-def chatgpt_input(messages):
-    print("here1")
-    # client = AzureOpenAI(
-    #     api_version="2024-12-01-preview",
-    #     azure_endpoint="https://azureopenai-instance-uiuc.cognitiveservices.azure.com/",
-    #     api_key=subscription_key,
-    # )
-
-
-    openai.api_key = ""
-    openai.api_base = "https://azureopenai-instance-uiuc.cognitiveservices.azure.com/"
-    openai.api_type = "azure"
-    openai.api_version = "2024-12-01-preview"
+def chatgpt_input(model, messages):
     
     response = openai.ChatCompletion.create(
         # model="gpt-3.5-turbo",
-        engine = "gpt-4o",
-        # model = "gpt-4o-2024-05-13",
+        engine = model,
         messages= messages,
         response_format={"type": "json_object"}
     )
-    print("here2")
     try:
         res = response["choices"][0]["message"]["content"]
         cost = estimate_cost(response["usage"]["prompt_tokens"],response["usage"]["completion_tokens"])
@@ -2448,15 +2580,13 @@ def chatgpt_input(messages):
         return res,cost
 
 
-def test_prompt(input_json):
-    print("here 0")
+def test_prompt(model, input_json):
     messages = get_messages(input_json)
-    print("here 3")
-    res,cost = chatgpt_input(messages)
+    res,cost = chatgpt_input(model, messages)
     return res,cost
 
 
-def evaluate_notes(json_file,save_json_file):  
+def evaluate_notes(model, json_file,save_json_file):  
     
     with open(json_file, 'r') as file:
         json_data = json.load(file)
@@ -2469,17 +2599,25 @@ def evaluate_notes(json_file,save_json_file):
     except:
         save_data_dict = {}
     
-    for select_id in tqdm(note_id_list):
+    counter = 0
+    for select_id in note_id_list:
+
+        if counter % 100 == 0:
+            print("Extracting relation ", counter, " out of ", len(note_id_list))
+        counter = counter + 1
+        
         if select_id in save_data_dict:
             pass 
         else:
             data_dict_idx = json_data[select_id]
             save_data_dict_idx = data_dict_idx.copy()
-            print("input_json: ", data_dict_idx['res'])   
+            if counter % 100 == 0:
+                print("using input record ", counter, " out of 1000" )
+                print("input_json: ", data_dict_idx['res'])   
 
             input_json = data_dict_idx['res']
 
-            res,cost = test_prompt(json.dumps(input_json))
+            res,cost = test_prompt(model, json.dumps(input_json))
             summary_cost += cost
             save_data_dict_idx['res_relation'] = res
             save_data_dict_idx['cost'] = cost
@@ -2529,7 +2667,12 @@ def postprocess_json(input_json_file,save_json_file):
     note_id_list = list(json_data.keys())
     
     save_data_dict = {}
-    for select_id in tqdm(note_id_list):
+    post_counter = 0
+    for select_id in note_id_list:
+        if post_counter % 100 == 0:
+            print("Post processing: ", post_counter, " out of ", 1000)
+
+
         data_dict_idx = json_data[select_id]
         save_data_dict_idx = data_dict_idx.copy()
         res_dict_idx = data_dict_idx['res']
