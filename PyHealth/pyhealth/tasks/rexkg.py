@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Dict, List, Union, Type, Any, Optional, Tuple, TYPE_CHECKING
 
 import numpy as np
+import pandas as pd
 import polars as pl
 import torch
 from torch.optim import AdamW
@@ -30,10 +31,26 @@ from pyhealth.data.data import Patient
 from pyhealth.processors import TextProcessor, SequenceProcessor
 from .base_task import BaseTask
 
+import openai
+
 if TYPE_CHECKING:
-    from ..datasets.rexkg import RexKGDataset
+    from ..datasets.rexkg import RexKGCheXpertDataset, RexKGDataset
 
 logger = logging.getLogger(__name__)
+
+
+def _apply_openai_credentials(openai_module: Any, api_key: Optional[str], api_base: Optional[str]) -> None:
+    """Apply OpenAI credentials to the openai module, exactly like the legacy gpt4_relation_extraction.py."""
+    openai_module.api_key = api_key
+    if api_base:
+        normalized_base = api_base.strip()
+        if not re.match(r"^https?://", normalized_base):
+            normalized_base = f"https://{normalized_base}"
+        if normalized_base.endswith("/"):
+            normalized_base = normalized_base[:-1]
+        if not normalized_base.endswith("/v1"):
+            normalized_base = f"{normalized_base}/v1"
+        openai_module.api_base = normalized_base
 
 
 class _TokenClsJsonDataset(TorchDataset):
@@ -2058,4 +2075,476 @@ class RexKGGetEntitiesRadiology(BaseTask):
             csvwriter.writerow(["source_entity", "target_entity", "type", "count"])
             for key, value in sorted(count_dict.items(), key=lambda x: x[1], reverse=True):
                 csvwriter.writerow([key[0], key[1], key[2], value])
+
+
+class RexKGGPT4EntityExtractionRadiology(BaseTask):
+    """GPT-4 entity extraction pipeline for ReXKG-style radiology findings.
+
+    This class mirrors the logic in ``src/ner/data/gpt4_entity_extraction.py``
+    while exposing a task-style API within ``pyhealth.tasks``.
+    """
+
+    task_name: str = "rexkg_gpt4_entity_extraction_radiology"
+    input_schema: Dict[str, Union[str, Type]] = {"section_findings": TextProcessor}
+    output_schema: Dict[str, Union[str, Type]] = {"res": TextProcessor}
+
+    _FEWSHOT_SAMPLES: List[Dict[str, str]] = [
+        {
+            "context": "<Input> Unchanged position of the left upper extremity PICC line. Again seen are surgical clips projecting over the right hemithorax.   Increased stranding opacities are noted in the left retrocardiac region.<\\Input>",
+            "response": "{'Unchanged position of the left upper extremity PICC line.':{'Unchanged': 'concept','position':'concept','left' : 'concept', 'upper': 'concept','extremity':'anatomy','PICC line':'device_present'}, 'Again seen are surgical clips projecting over the right hemithorax. ':{'surgical clips':'device_present', 'right' : 'concept',  'hemithorax': 'anatomy'},'Increased stranding opacities are noted in the left retrocardiac region. ':{'Increased':'concept','stranding' : 'concept','opacities': 'disorder_present','left':'concept','retrocardiac':'anatomy','region':'anatomy'}}",
+        }
+    ]
+
+    def __call__(self, patient: Patient) -> List[Dict]:
+        raise NotImplementedError(
+            "RexKGGPT4EntityExtractionRadiology is a pipeline-style task. "
+            "Use RexKGGPT4EntityExtractionRadiology.set_task(...) instead."
+        )
+
+    @classmethod
+    def set_task(
+        cls,
+        dataset: Optional["RexKGCheXpertDataset"] = None,
+        input_csv_file: Optional[str] = None,
+        save_json_file: str = "./gpt4_entities_chexpert_plus.json",
+        start_idx: int = 0,
+        end_idx: int = 1000,
+        api_key: Optional[str] = None,
+        api_base: Optional[str] = None,
+        model: str = "gpt-4o-2024-05-13",
+    ) -> Dict[str, Any]:
+        """Run GPT-4 extraction over section findings.
+
+        Either ``dataset`` (RexKGCheXpertDataset) or ``input_csv_file`` must be
+        provided. If both are provided, ``input_csv_file`` takes precedence.
+        """
+        resolved_input = cls._resolve_input_csv(dataset=dataset, input_csv_file=input_csv_file)
+        output_path = Path(save_json_file).expanduser().resolve()
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        return cls._evaluate_notes(
+            input_csv_file=str(resolved_input),
+            save_json_file=str(output_path),
+            start_idx=start_idx,
+            end_idx=end_idx,
+            api_key=api_key,
+            api_base=api_base,
+            model=model,
+        )
+
+    @staticmethod
+    def _resolve_input_csv(
+        dataset: Optional["RexKGCheXpertDataset"],
+        input_csv_file: Optional[str],
+    ) -> Path:
+        if input_csv_file:
+            p = Path(input_csv_file).expanduser().resolve()
+            if not p.exists():
+                raise FileNotFoundError(f"Input CSV file not found: {p}")
+            return p
+
+        if dataset is not None:
+            prepared = Path(dataset.root).expanduser().resolve() / "rexkg-chexpert-pyhealth.csv"
+            if not prepared.exists():
+                raise FileNotFoundError(
+                    f"Prepared CheXpert CSV not found at {prepared}. "
+                    "Please construct RexKGCheXpertDataset first so it prepares this file."
+                )
+            return prepared
+
+        raise ValueError("Either dataset or input_csv_file must be provided.")
+
+    @classmethod
+    def _get_messages(cls, query: str) -> List[Dict[str, str]]:
+        messages: List[Dict[str, str]] = [
+            {
+                "role": "system",
+                "content": "You are a radiologist performing clinical term extraction from the FINDINGS and IMPRESSION sections in the radiology report.                     Here a clinical term can be in ['anatomy','disorder_present','disorder_notpresent','procedures','devices','concept', 'devices_present','devices_notpresent','size'].                     'anatomy' refers to the anatomical body;                    'disorder_present' refers to findings or diseases are present according to the sentence;                     'disorder_notpresent' refers to findings or diseases are not present according to the sentence;                     'procedures' refers to procedures are used to diagnose, measure, monitor or treat problems;                     'devices' refers to any instrument, apparatus for medical purpose.                     'size' refers to the measurement of disorders or anatomy, for example, '3mm','4x5 cm'.                     'concept' refers to descriptors such as 'acute' or 'chronic','large', size or severity, or other modifiers, or descriptors of anatomy being normal.                     For example, right pleural effusion , 'right' should be a 'concept', and 'pleural' should be  'anatomy' and 'effusion' should be 'disorder-present' or 'disorder-notpresent'.                    For example, normal cardiomediastinal silhouette. 'normal' and 'silhouette' should be 'concept', 'cardiomediastinal' should be 'anatomy'.                      Please extract terms one word at a time whenever possible, avoiding phrases. Note that terms like 'no' and 'no evidence of' are not considered entities.                     Given a list of radiology sentence input in the format:                     <Input><sentence><sentence><\\Input>                     Please reply with the JSON format following template: {'<sentence>':{'entity':'entity type','entity':'entity type'},'<sentence>':{'entity':'entity type','entity':'entity type'}}",
+            }
+        ]
+        for sample in cls._FEWSHOT_SAMPLES:
+            messages.append({"role": "user", "content": sample["context"]})
+            messages.append({"role": "assistant", "content": sample["response"]})
+        messages.append({"role": "user", "content": query})
+        return messages
+
+    @staticmethod
+    def _estimate_cost(prompt_tokens: int, completion_tokens: int) -> float:
+        input_cost = 0.005
+        output_cost = 0.015
+        return input_cost * prompt_tokens / 1000 + output_cost * completion_tokens / 1000
+
+    @classmethod
+    def _chatgpt_input(
+        cls,
+        messages: List[Dict[str, str]],
+        api_key: Optional[str],
+        api_base: Optional[str],
+        model: str,
+    ) -> Tuple[Union[Dict[str, Any], str], float]:
+
+
+        _apply_openai_credentials(openai, api_key, api_base)
+
+        response = openai.ChatCompletion.create(
+            model=model,
+            messages=messages,
+            response_format={"type": "json_object"},
+        )
+
+        try:
+            res = response["choices"][0]["message"]["content"]
+            cost = cls._estimate_cost(
+                response["usage"]["prompt_tokens"],
+                response["usage"]["completion_tokens"],
+            )
+            return json.loads(res), cost
+        except Exception:
+            res = response["choices"][0]["message"]["content"]
+            cost = cls._estimate_cost(
+                response["usage"]["prompt_tokens"],
+                response["usage"]["completion_tokens"],
+            )
+            return res, cost
+
+    @classmethod
+    def _test_prompt(
+        cls,
+        findings_idx: str,
+        api_key: Optional[str],
+        api_base: Optional[str],
+        model: str,
+    ) -> Tuple[Union[Dict[str, Any], str], float]:
+        content = "<Input>" + findings_idx + "<\\Input>"
+        messages = cls._get_messages(content)
+        return cls._chatgpt_input(messages, api_key=api_key, api_base=api_base, model=model)
+
+    @classmethod
+    def _evaluate_notes(
+        cls,
+        input_csv_file: str,
+        save_json_file: str,
+        start_idx: int,
+        end_idx: int,
+        api_key: Optional[str],
+        api_base: Optional[str],
+        model: str,
+    ) -> Dict[str, Any]:
+     
+     
+        
+        # Set credentials ONCE at the start, like the legacy script
+        _apply_openai_credentials(openai, api_key, api_base)
+        
+        df = pd.read_csv(input_csv_file)[0:1000]
+        image_id_list = df["path_to_image"].to_list()
+        findings_list = df["section_findings"].to_list()
+
+        summary_cost = 0
+        try:
+            with open(save_json_file, "r") as outfile:
+                save_data_dict: Dict[str, Any] = json.load(outfile)
+        except Exception:
+            save_data_dict = {}
+
+        for idx in tqdm(range(start_idx, end_idx)):
+            image_idx = image_id_list[idx]
+            findings_idx = findings_list[idx]
+            if image_idx in save_data_dict:
+                print("Already passed:", image_idx)
+            else:
+                save_data_dict_idx: Dict[str, Any] = {"section_findings": findings_idx}
+                try:
+                    res, cost = cls._test_prompt(
+                        findings_idx,
+                        api_key=api_key,
+                        api_base=api_base,
+                        model=model,
+                    )
+                    summary_cost += cost
+                    save_data_dict_idx["res"] = res
+                    save_data_dict_idx["cost"] = cost
+                    save_data_dict[image_idx] = save_data_dict_idx
+                except Exception:
+                    print(idx, image_idx)
+                    time.sleep(1)
+                with open(save_json_file, "w") as outfile:
+                    json.dump(save_data_dict, outfile, indent=4)
+
+        print("SUMMARY COST: ", summary_cost)
+        return {
+            "save_json_file": str(Path(save_json_file).expanduser().resolve()),
+            "num_saved": len(save_data_dict),
+            "summary_cost": summary_cost,
+            "start_idx": start_idx,
+            "end_idx": end_idx,
+            "model": model,
+        }
+
+
+class RexKGGPT4RelationExtractionRadiology(BaseTask):
+    """GPT-4 relation extraction pipeline mirroring gpt4_relation_extraction.py."""
+
+    task_name: str = "rexkg_gpt4_relation_extraction_radiology"
+    input_schema: Dict[str, Union[str, Type]] = {"res": TextProcessor}
+    output_schema: Dict[str, Union[str, Type]] = {"res_relation": TextProcessor}
+
+    _FEWSHOT_SAMPLES: List[Dict[str, str]] = [
+        {
+            "context": "{'Bones are stable with mild degenerative changes of the spine.':{'Bones': 'anatomy', 'stable': 'concept', 'mild': 'concept', 'degenerative changes': 'disorder_present', 'spine': 'anatomy'}}",
+            "response": "{'Bones are stable with mild degenerative changes of the spine.': [{'stable': 'Bones', 'relation':'modify'}, {'mild':'degenerative changes', 'relation':'modify'}, {'degenerative changes':'spine','relation':'located_at'}]}",
+        },
+        {
+            "context": "{'A dense retrocardiac opacity remains present with slight blunting of the left costophrenic angle, suggestive of a small effusion.': {'dense': 'concept','retrocardiac': 'anatomy','opacity': 'disorder_present','slight': 'concept','blunting': 'disorder_present','left': 'concept','costophrenic': 'anatomy','angle': 'anatomy','small': 'concept','effusion': 'disorder_present'}}",
+            "response": "{'A dense retrocardiac opacity remains present with slight blunting of the left costophrenic angle, suggestive of a small effusion.': [{'dense': 'opacity', 'relation': 'modify'}, {'opacity': 'retrocardiac', 'relation': 'located_at'}, {'slight': 'blunting', 'relation': 'modify'}, {'blunting': 'angle', 'relation': 'modify'}, {'left': 'costophrenic', 'relation': 'modify'}, {'small': 'effusion', 'relation': 'modify'}, {'effusion': 'costophrenic', 'relation': 'located_at'},{'opacity':'effusion','relation':'suggestive_of'},{'blunting':'effusion','relation':'suggestive_of'}]}",
+        },
+    ]
+
+    def __call__(self, patient: Patient) -> List[Dict]:
+        raise NotImplementedError(
+            "RexKGGPT4RelationExtractionRadiology is a pipeline-style task. "
+            "Use RexKGGPT4RelationExtractionRadiology.set_task(...) instead."
+        )
+
+    @classmethod
+    def set_task(
+        cls,
+        input_json_file: str,
+        save_json_file: str,
+        api_key: Optional[str] = None,
+        api_base: Optional[str] = None,
+        model: str = "gpt-4o-2024-05-13",
+        postprocess_json_file: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Run GPT-4 relation extraction over entity JSON and persist outputs."""
+        input_path = Path(input_json_file).expanduser().resolve()
+        if not input_path.exists():
+            raise FileNotFoundError(f"Input JSON file not found: {input_path}")
+
+        save_path = Path(save_json_file).expanduser().resolve()
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+
+        summary_cost = cls._evaluate_notes(
+            json_file=str(input_path),
+            save_json_file=str(save_path),
+            api_key=api_key,
+            api_base=api_base,
+            model=model,
+        )
+
+       
+
+        post_path_resolved: Optional[Path] = None
+        if postprocess_json_file is not None:
+            post_path_resolved = Path(postprocess_json_file).expanduser().resolve()
+            post_path_resolved.parent.mkdir(parents=True, exist_ok=True)
+            cls.postprocess_json(str(save_path), str(post_path_resolved))
+
+        return {
+            "input_json_file": str(input_path),
+            "save_json_file": str(save_path),
+            "postprocess_json_file": str(post_path_resolved) if post_path_resolved else None,
+            "summary_cost": summary_cost,
+            "model": model,
+        }
+
+    @classmethod
+    def _get_messages(cls, query: str) -> List[Dict[str, str]]:
+        messages: List[Dict[str, str]] = [
+            {
+                "role": "system",
+                "content": "You are a radiologist performing relation extraction of entities from the FINDINGS and IMPRESSION sections in the radiology report.                     Here a clinical term can be in ['anatomy','disorder_present','disorder_notpresent','procedures','devices','concept', 'devices_present','devices_notpresent', 'size'].                     And the relation can be in ['modify', 'located_at', 'suggestive_of'].                     'suggestive_of' means the source entity (findings) may suggest the target entity (disease).                     'located_at' means the source entity is located at the target entity.                     'modify' denotes the source entity modifies the target entity.                     Every time there is a 'modify' relationship between concept and anatomy, the direction should be concept -> anatomy.                     For example, right pleural effusion , 'right' (concept), modify  'pleural' (anatomy), 'effusion' (disorder) located_at 'pleural' (anatomy).                     Please ensure the direction of source/target entities is maintained correctly.                     Given a piece of radiology text input in the JSON format:                     {'sentence':{'entity':'entity_type'},'sentence':{'entity':'entity_type'}}                     Please reply with the following JSON format:                     {'sentence':[{source entity:'target entity',relation:'relation'},{source entity:'target entity',relation:'relation'}]}                    ",
+            }
+        ]
+
+        for sample in cls._FEWSHOT_SAMPLES:
+            messages.append({"role": "user", "content": sample["context"]})
+            messages.append({"role": "assistant", "content": sample["response"]})
+
+        messages.append({"role": "user", "content": query})
+        return messages
+
+    @staticmethod
+    def _estimate_cost(prompt_tokens: int, completion_tokens: int) -> float:
+        input_cost = 0.005
+        output_cost = 0.015
+        return input_cost * prompt_tokens / 1000 + output_cost * completion_tokens / 1000
+
+    @classmethod
+    def _chatgpt_input(
+        cls,
+        messages: List[Dict[str, str]],
+        api_key: Optional[str],
+        api_base: Optional[str],
+        model: str,
+    ) -> Tuple[Union[Dict[str, Any], str], float]:
+        
+
+
+   
+   
+
+
+        # openai.api_key = api_key
+        # if api_base:
+        #     normalized_base = api_base.strip()
+        #     if not re.match(r"^https?://", normalized_base):
+        #         normalized_base = f"https://{normalized_base}"
+        #     if normalized_base.endswith("/"):
+        #         normalized_base = normalized_base[:-1]
+        #     if not normalized_base.endswith("/v1"):
+        #         normalized_base = f"{normalized_base}/v1"
+        #     openai.api_base = normalized_base
+        # openai.api_key = api_key
+        # openai.api_base = api_base
+
+        response = openai.ChatCompletion.create(
+            model=model,
+            messages=messages,
+            response_format={"type": "json_object"},
+        )
+        try:
+            res = response["choices"][0]["message"]["content"]
+            cost = cls._estimate_cost(
+                response["usage"]["prompt_tokens"],
+                response["usage"]["completion_tokens"],
+            )
+            return json.loads(res), cost
+        except Exception:
+            res = response["choices"][0]["message"]["content"]
+            cost = cls._estimate_cost(
+                response["usage"]["prompt_tokens"],
+                response["usage"]["completion_tokens"],
+            )
+            return res, cost
+
+    @classmethod
+    def _test_prompt(
+        cls,
+        input_json: str,
+        api_key: Optional[str],
+        api_base: Optional[str],
+        model: str,
+    ) -> Tuple[Union[Dict[str, Any], str], float]:
+        messages = cls._get_messages(input_json)
+        return cls._chatgpt_input(messages, api_key=api_key, api_base=api_base, model=model)
+
+    @classmethod
+    def _evaluate_notes(
+        cls,
+        json_file: str,
+        save_json_file: str,
+        api_key: Optional[str],
+        api_base: Optional[str],
+        model: str,
+    ) -> float:
+
+
+        
+        # Set credentials ONCE at the start, like the legacy script
+        _apply_openai_credentials(openai, api_key, api_base)
+        
+        with open(json_file, "r") as file:
+            json_data = json.load(file)
+        note_id_list = list(json_data.keys())
+        summary_cost = 0.0
+
+        try:
+            with open(save_json_file, "r") as file:
+                save_data_dict = json.load(file)
+        except Exception:
+            save_data_dict = {}
+
+        for select_id in tqdm(note_id_list):
+            if select_id in save_data_dict:
+                pass
+            else:
+                data_dict_idx = json_data[select_id]
+                save_data_dict_idx = data_dict_idx.copy()
+                print(save_data_dict_idx)
+                input_json = data_dict_idx["res"]
+
+                res, cost = cls._test_prompt(
+                    json.dumps(input_json),
+                    api_key=api_key,
+                    api_base=api_base,
+                    model=model,
+                )
+                summary_cost += cost
+                save_data_dict_idx["res_relation"] = res
+                save_data_dict_idx["cost"] = cost
+                save_data_dict[select_id] = save_data_dict_idx
+
+            with open(save_json_file, "w") as outfile:
+                json.dump(save_data_dict, outfile, indent=4)
+
+        print("SUMMARY COST: ", summary_cost)
+        return summary_cost
+
+    @staticmethod
+    def convert_json_format(input_dict: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        if len(input_dict) == 2:
+            source_entity, target_entity = input_dict.items()
+            return {
+                "source entity": source_entity[0],
+                "target entity": input_dict[source_entity[0]],
+                "relation": input_dict[target_entity[0]],
+            }
+        elif len(input_dict) == 3:
+            if "source" in input_dict:
+                input_dict["source entity"] = input_dict["source"]
+                input_dict["target entity"] = input_dict["target"]
+                del input_dict["source"]
+                del input_dict["target"]
+            return input_dict
+        else:
+            print("Error:", input_dict)
+            return None
+
+    @classmethod
+    def flatten_dict(cls, d: Dict[str, Any]) -> Dict[str, Any]:
+        flat_dict: Dict[str, Any] = {}
+
+        for key, value in d.items():
+            if isinstance(value, dict):
+                flat_dict.update(cls.flatten_dict(value))
+            else:
+                flat_dict[key] = value
+
+        return flat_dict
+
+    @classmethod
+    def postprocess_json(cls, input_json_file: str, save_json_file: str) -> None:
+        with open(input_json_file, "r") as file:
+            json_data = json.load(file)
+        note_id_list = list(json_data.keys())
+
+        save_data_dict: Dict[str, Any] = {}
+        for select_id in tqdm(note_id_list):
+            data_dict_idx = json_data[select_id]
+            save_data_dict_idx = data_dict_idx.copy()
+            res_dict_idx = data_dict_idx["res"]
+            res_relation_dict_idx = data_dict_idx["res_relation"]
+            save_res_relation_dict_idx = res_relation_dict_idx.copy()
+            sentence_list = list(res_dict_idx.keys())
+            relation_sentence_list = list(res_relation_dict_idx.keys())
+
+            if len(sentence_list) != len(relation_sentence_list):
+                pass
+            else:
+                for sentence in res_dict_idx:
+                    res_dict_idx[sentence] = cls.flatten_dict(res_dict_idx[sentence])
+                for sentence in res_relation_dict_idx:
+                    sentence_relation_list = res_relation_dict_idx[sentence]
+                    save_sentence_relation_list = []
+                    for sentence_relation_dict in sentence_relation_list:
+                        save_sentence_relation_dict = cls.convert_json_format(sentence_relation_dict)
+                        if save_sentence_relation_dict:
+                            save_sentence_relation_list.append(save_sentence_relation_dict)
+                    save_res_relation_dict_idx[sentence] = save_sentence_relation_list
+                save_data_dict_idx["res_relation"] = save_res_relation_dict_idx
+                save_data_dict[select_id] = save_data_dict_idx
+
+        with open(save_json_file, "w") as outfile:
+            json.dump(save_data_dict, outfile, indent=4)
 
