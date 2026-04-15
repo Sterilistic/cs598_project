@@ -2192,20 +2192,20 @@ class RexKGGPT4EntityExtractionRadiology(BaseTask):
             response_format={"type": "json_object"},
         )
 
-        try:
-            res = response["choices"][0]["message"]["content"]
-            cost = cls._estimate_cost(
-                response["usage"]["prompt_tokens"],
-                response["usage"]["completion_tokens"],
-            )
-            return json.loads(res), cost
-        except Exception:
-            res = response["choices"][0]["message"]["content"]
-            cost = cls._estimate_cost(
-                response["usage"]["prompt_tokens"],
-                response["usage"]["completion_tokens"],
-            )
-            return res, cost
+        # try:
+        res = response["choices"][0]["message"]["content"]
+        cost = cls._estimate_cost(
+            response["usage"]["prompt_tokens"],
+            response["usage"]["completion_tokens"],
+        )
+        return json.loads(res), cost
+        # except Exception:
+            # res = response["choices"][0]["message"]["content"]
+            # cost = cls._estimate_cost(
+            #     response["usage"]["prompt_tokens"],
+            #     response["usage"]["completion_tokens"],
+            # )
+            # return res, cost
 
     @classmethod
     def _test_prompt(
@@ -2241,18 +2241,25 @@ class RexKGGPT4EntityExtractionRadiology(BaseTask):
         findings_list = df["section_findings"].to_list()
 
         summary_cost = 0
+
         try:
             with open(save_json_file, "r") as outfile:
                 save_data_dict: Dict[str, Any] = json.load(outfile)
         except Exception:
             save_data_dict = {}
 
-        for idx in tqdm(range(start_idx, end_idx)):
+
+
+        counter = 0
+        for idx in range(start_idx, end_idx):
+
+            if counter % 100 == 0:
+                print("Extracted ", counter, " out of ", end_idx, " records." )
+            counter = counter + 1
+
             image_idx = image_id_list[idx]
             findings_idx = findings_list[idx]
-            if image_idx in save_data_dict:
-                print("Already passed:", image_idx)
-            else:
+            if image_idx not in save_data_dict:
                 save_data_dict_idx: Dict[str, Any] = {"section_findings": findings_idx}
                 try:
                     res, cost = cls._test_prompt(
@@ -2266,7 +2273,7 @@ class RexKGGPT4EntityExtractionRadiology(BaseTask):
                     save_data_dict_idx["cost"] = cost
                     save_data_dict[image_idx] = save_data_dict_idx
                 except Exception:
-                    print(idx, image_idx)
+                    # print(idx, image_idx)
                     time.sleep(1)
                 with open(save_json_file, "w") as outfile:
                     json.dump(save_data_dict, outfile, indent=4)
