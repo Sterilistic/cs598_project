@@ -2164,11 +2164,13 @@ class RexKGGPT4EntityExtractionRadiology(BaseTask):
         messages.append({"role": "user", "content": query})
         return messages
 
+
     @staticmethod
     def _estimate_cost(prompt_tokens: int, completion_tokens: int) -> float:
         input_cost = 0.005
         output_cost = 0.015
         return input_cost * prompt_tokens / 1000 + output_cost * completion_tokens / 1000
+
 
     @classmethod
     def _chatgpt_input(
@@ -2178,18 +2180,14 @@ class RexKGGPT4EntityExtractionRadiology(BaseTask):
         api_base: Optional[str],
         model: str,
     ) -> Tuple[Union[Dict[str, Any], str], float]:
-
-
         # _apply_openai_credentials(openai, api_key, api_base)
-
-
-
+        # if counter % 100 == 0:
+        print("input json:", messages)
         response = openai.ChatCompletion.create(
             model=model,
             messages=messages,
             response_format={"type": "json_object"},
         )
-
         try:
             res = response["choices"][0]["message"]["content"]
             cost = cls._estimate_cost(
@@ -2205,6 +2203,7 @@ class RexKGGPT4EntityExtractionRadiology(BaseTask):
             )
             return res, cost
 
+
     @classmethod
     def _test_prompt(
         cls,
@@ -2217,6 +2216,7 @@ class RexKGGPT4EntityExtractionRadiology(BaseTask):
         messages = cls._get_messages(content)
         return cls._chatgpt_input(messages, api_key=api_key, api_base=api_base, model=model)
 
+
     @classmethod
     def _evaluate_notes(
         cls,
@@ -2227,31 +2227,21 @@ class RexKGGPT4EntityExtractionRadiology(BaseTask):
         api_key: Optional[str],
         api_base: Optional[str],
         model: str,
-    ) -> Dict[str, Any]:
-     
-     
-        
+    ) -> Dict[str, Any]:    
         df = pd.read_csv(input_csv_file)[0:1000]
         image_id_list = df["path_to_image"].to_list()
         findings_list = df["section_findings"].to_list()
-
         summary_cost = 0
-
         try:
             with open(save_json_file, "r") as outfile:
                 save_data_dict: Dict[str, Any] = json.load(outfile)
         except Exception:
             save_data_dict = {}
-
-
-
         counter = 0
         for idx in range(start_idx, end_idx):
-
             if counter % 100 == 0:
-                print("Extracted ", counter, " out of ", end_idx, " records." )
+                print("Extracting patient entity ", counter, " out of ", end_idx, " records." )
             counter = counter + 1
-
             image_idx = image_id_list[idx]
             findings_idx = findings_list[idx]
             if image_idx not in save_data_dict:
@@ -2263,6 +2253,7 @@ class RexKGGPT4EntityExtractionRadiology(BaseTask):
                         api_base=api_base,
                         model=model,
                     )
+                    print({"section_findings": findings_idx})
                     summary_cost += cost
                     save_data_dict_idx["res"] = res
                     save_data_dict_idx["cost"] = cost
@@ -2272,8 +2263,7 @@ class RexKGGPT4EntityExtractionRadiology(BaseTask):
                     time.sleep(1)
                 with open(save_json_file, "w") as outfile:
                     json.dump(save_data_dict, outfile, indent=4)
-
-        print("SUMMARY COST: ", summary_cost)
+        # print("SUMMARY COST: ", summary_cost)
         return {
             "save_json_file": str(Path(save_json_file).expanduser().resolve()),
             "num_saved": len(save_data_dict),
@@ -2282,6 +2272,9 @@ class RexKGGPT4EntityExtractionRadiology(BaseTask):
             "end_idx": end_idx,
             "model": model,
         }
+
+
+
 
 
 class RexKGGPT4RelationExtractionRadiology(BaseTask):
@@ -2302,11 +2295,13 @@ class RexKGGPT4RelationExtractionRadiology(BaseTask):
         },
     ]
 
+
     def __call__(self, patient: Patient) -> List[Dict]:
         raise NotImplementedError(
             "RexKGGPT4RelationExtractionRadiology is a pipeline-style task. "
             "Use RexKGGPT4RelationExtractionRadiology.set_task(...) instead."
         )
+
 
     @classmethod
     def set_task(
@@ -2321,24 +2316,17 @@ class RexKGGPT4RelationExtractionRadiology(BaseTask):
         model: str = "gpt-4o",
     ) -> Dict[str, Any]:
         """Run GPT-4 relation extraction over entity JSON and persist outputs."""
-        
         input_path = Path(input_json_file).expanduser().resolve()
         if not input_path.exists():
             raise FileNotFoundError(f"Input JSON file not found: {input_path}")
-
         save_path = Path(save_json_file).expanduser().resolve()
         save_path.parent.mkdir(parents=True, exist_ok=True)
-        
-
         openai.api_type = api_type
         openai.api_version = api_version
         openai.api_key = api_key
         openai.api_base = api_base
-
         cls._evaluate_notes(model, input_json_file, save_json_file)
         cls._postprocess_json(save_json_file, post_proccess_json)
-
-
         return {
             "input_json_file": str(input_path),
             "save_json_file": str(save_path),
@@ -2346,6 +2334,7 @@ class RexKGGPT4RelationExtractionRadiology(BaseTask):
             # "summary_cost": summary_cost,
             "model": model,
         }
+    
 
     @classmethod
     def _get_messages(cls, query: str) -> List[Dict[str, str]]:
@@ -2375,11 +2364,13 @@ class RexKGGPT4RelationExtractionRadiology(BaseTask):
         messages.append({"role": "user", "content": query})
         return messages
 
+
     @staticmethod
     def _estimate_cost(prompt_tokens: int, completion_tokens: int) -> float:
         input_cost = 0.005
         output_cost = 0.015
         return input_cost * prompt_tokens / 1000 + output_cost * completion_tokens / 1000
+
 
     @classmethod
     def _chatgpt_input(cls, model: str, messages: list) -> tuple:
@@ -2403,17 +2394,20 @@ class RexKGGPT4RelationExtractionRadiology(BaseTask):
             )
             return res, cost
 
+
     @classmethod
     def _test_prompt(cls, model: str, input_json: str) -> tuple:
         messages = cls._get_messages(input_json)
         return cls._chatgpt_input(model, messages)
+
 
     @classmethod
     def _evaluate_notes(cls, model: str, json_file: str, save_json_file: str) -> None:
         with open(json_file, "r") as file:
             json_data = json.load(file)
         note_id_list = list(json_data.keys())
-        summary_cost = 0
+        summary_cost = 0.0
+        skipped_records = []
 
         try:
             with open(save_json_file, "r") as file:
@@ -2424,11 +2418,11 @@ class RexKGGPT4RelationExtractionRadiology(BaseTask):
         counter = 0
         for select_id in note_id_list:
             if counter % 100 == 0:
-                print("Extracting relation ", counter, " out of ", len(note_id_list))
+                print("Extracting patient relation ", counter, " out of ", len(note_id_list))
             counter += 1
 
             if select_id in save_data_dict:
-                pass
+                continue
             else:
                 data_dict_idx = json_data[select_id]
                 save_data_dict_idx = data_dict_idx.copy()
@@ -2437,15 +2431,33 @@ class RexKGGPT4RelationExtractionRadiology(BaseTask):
                     print("input_json: ", data_dict_idx["res"])
 
                 input_json = data_dict_idx["res"]
-                res, cost = cls._test_prompt(model, json.dumps(input_json))
-                summary_cost += cost
-                save_data_dict_idx["res_relation"] = res
-                save_data_dict_idx["cost"] = cost
-                save_data_dict[select_id] = save_data_dict_idx
+                try:
+                    res, cost = cls._test_prompt(model, json.dumps(input_json))
+                    summary_cost += cost
+                    save_data_dict_idx["res_relation"] = res
+                    save_data_dict_idx["cost"] = cost
+                    save_data_dict[select_id] = save_data_dict_idx
+                except Exception as exc:
+                    err_msg = str(exc)
+                    lower_msg = err_msg.lower()
+                    if (
+                        "content management policy" in lower_msg
+                        or "response was filtered" in lower_msg
+                    ):
+                        print(f"SKIP filtered records (does not adhere to OpenAI's Safety Standards)  {select_id}")
+                    else:
+                        print(f"[SKIP error] {select_id}: {err_msg}")
+                    skipped_records.append({"id": select_id, "error": err_msg})
 
             with open(save_json_file, "w") as outfile:
                 json.dump(save_data_dict, outfile, indent=4)
-        print("SUMMARY COST: ", summary_cost)
+
+        skipped_file = str(Path(save_json_file).with_suffix("")) + "_skipped.json"
+        with open(skipped_file, "w") as outfile:
+            json.dump(skipped_records, outfile, indent=4)
+        # print("SUMMARY COST: ", summary_cost)
+        print("SKIPPED RECORDS: ", len(skipped_records), "saved to", skipped_file)
+
 
     @staticmethod
     def _convert_json_format(input_dict: dict):
@@ -2467,6 +2479,8 @@ class RexKGGPT4RelationExtractionRadiology(BaseTask):
             print("Error:", input_dict)
             return None
 
+
+
     @classmethod
     def _flatten_dict(cls, d: dict) -> dict:
         flat_dict = {}
@@ -2476,6 +2490,8 @@ class RexKGGPT4RelationExtractionRadiology(BaseTask):
             else:
                 flat_dict[key] = value
         return flat_dict
+
+
 
     @classmethod
     def _postprocess_json(cls, input_json_file: str, save_json_file: str) -> None:
@@ -2488,11 +2504,24 @@ class RexKGGPT4RelationExtractionRadiology(BaseTask):
         for select_id in note_id_list:
             if post_counter % 100 == 0:
                 print("Post processing: ", post_counter, " out of ", 1000)
-
             data_dict_idx = json_data[select_id]
             save_data_dict_idx = data_dict_idx.copy()
             res_dict_idx = data_dict_idx["res"]
             res_relation_dict_idx = data_dict_idx["res_relation"]
+            # GPT may return res_relation as a JSON string rather than a parsed dict
+            if isinstance(res_relation_dict_idx, str):
+                try:
+                    res_relation_dict_idx = json.loads(res_relation_dict_idx)
+                except json.JSONDecodeError:
+                    post_counter += 1
+                    continue
+            # res may also come back as a JSON string
+            if isinstance(res_dict_idx, str):
+                try:
+                    res_dict_idx = json.loads(res_dict_idx)
+                except json.JSONDecodeError:
+                    post_counter += 1
+                    continue
             save_res_relation_dict_idx = res_relation_dict_idx.copy()
             sentence_list = list(res_dict_idx.keys())
             relation_sentence_list = list(res_relation_dict_idx.keys())
@@ -2512,9 +2541,237 @@ class RexKGGPT4RelationExtractionRadiology(BaseTask):
                 save_data_dict_idx["res_relation"] = save_res_relation_dict_idx
                 save_data_dict[select_id] = save_data_dict_idx
             post_counter += 1
-
         with open(save_json_file, "w") as outfile:
             json.dump(save_data_dict, outfile, indent=4)
+
+
+
+class RexKGStructureData(BaseTask):
+    """Convert post-processed GPT-4 relation JSON into PURE-format train/test splits.
+
+    This class mirrors the logic in ``src/ner/data/structure_data.py`` and
+    exposes it via the PyHealth task-style API.
+    """
+
+    task_name: str = "rexkg_structure_data"
+    input_schema: Dict[str, Union[str, Type]] = {"post_proccess_json": TextProcessor}
+    output_schema: Dict[str, Union[str, Type]] = {"save_train_path": TextProcessor}
+
+    def __call__(self, patient: Patient) -> List[Dict]:
+        raise NotImplementedError(
+            "RexKGStructureData is a pipeline-style task. "
+            "Use RexKGStructureData.set_task(...) instead."
+        )
+
+    @classmethod
+    def set_task(
+        cls,
+        post_proccess_json: str,
+        save_train_path: str,
+        save_test_path: str,
+        test_slice_end: int = 100,
+        train_slice_start: int = 100,
+        train_slice_end: int = 1000,
+    ) -> Dict[str, str]:
+        """Run structure_data pipeline: convert JSON to PURE-format JSONL splits.
+
+        Args:
+            post_proccess_json: Path to the post-processed relation JSON file
+                (output of RexKGGPT4RelationExtractionRadiology).
+            save_train_path: Path to write the training split JSONL file.
+            save_test_path: Path to write the test split JSONL file.
+            test_slice_end: End index for test slice (default 100).
+            train_slice_start: Start index for train slice (default 100).
+            train_slice_end: End index for train slice (default 1000).
+        """
+        input_path = Path(post_proccess_json).expanduser().resolve()
+        if not input_path.exists():
+            raise FileNotFoundError(f"Input JSON file not found: {input_path}")
+
+        train_path = Path(save_train_path).expanduser().resolve()
+        test_path = Path(save_test_path).expanduser().resolve()
+        train_path.parent.mkdir(parents=True, exist_ok=True)
+        test_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(input_path, "r") as f:
+            json_data = json.load(f)
+
+        cls._preprocess_sentences_relation(
+            cls._dict_slice(json_data, 0, test_slice_end),
+            str(test_path),
+        )
+        cls._preprocess_sentences_relation(
+            cls._dict_slice(json_data, train_slice_start, train_slice_end),
+            str(train_path),
+        )
+
+        return {
+            "save_train_path": str(train_path),
+            "save_test_path": str(test_path),
+        }
+
+    @staticmethod
+    def _dict_slice(d: dict, start: int, end: int) -> dict:
+        keys = list(d.keys())[start:end]
+        return {k: d[k] for k in keys}
+
+    @staticmethod
+    def _find_word_indices(sen: list, target_word: str):
+        import re
+        target_words = re.sub(
+            r"(?<! )(?=[/,:,.,!?()])|(?<=[/,-,:,.,!?()])(?! )", r" ", target_word
+        ).split()
+        start_index = -1
+        end_index = -1
+        for i, word in enumerate(sen):
+            if word == target_words[0] and (start_index == -1 or end_index == -1):
+                if sen[i: i + len(target_words)] == target_words:
+                    start_index = i
+                    end_index = i + len(target_words) - 1
+        return start_index, end_index
+
+    @staticmethod
+    def _is_number(s: str) -> bool:
+        return s.isdigit()
+
+    @staticmethod
+    def _has_measurement_units(text: str) -> bool:
+        import re
+        pattern = r"\d+\s*(mm|cm|m|km|in|ft|yd|mi)"
+        return bool(re.findall(pattern, text))
+
+    @classmethod
+    def _get_ner_list(cls, sen: list, sentence_info: dict):
+        return_ner_dict = {}
+        return_ner_list = []
+        for entity in list(sentence_info.keys()):
+            entity_copy = entity
+            if entity.lower() in ["no evidence of", "no evidence", "no"]:
+                continue
+            elif "no evidence of " in entity.lower():
+                entity = entity.replace("no evidence of ", "")
+            elif "no evidence " in entity.lower():
+                entity = entity.replace("no evidence ", "")
+            elif "no " in entity.lower():
+                entity = entity.replace("no ", "")
+            entity_type = sentence_info[entity_copy].lower()
+
+            if entity_type == "size":
+                if (
+                    "cm" in entity.split()
+                    or "mm" in entity.split()
+                    or "-cm" in entity
+                    or "-mm" in entity
+                ):
+                    entity_type = "size"
+                elif cls._has_measurement_units(entity) or cls._is_number(entity):
+                    entity_type = "size"
+                else:
+                    entity_type = "concept"
+
+            if entity_type in ["devices", "device"]:
+                if "removed" in sen or "removal" in sen:
+                    entity_type = "devices_notpresent"
+                else:
+                    entity_type = "devices_present"
+
+            start_index, end_index = cls._find_word_indices(sen, entity.lower())
+            return_ner_list.append([start_index, end_index, entity_type])
+            return_ner_dict[entity] = [start_index, end_index]
+        return return_ner_list, return_ner_dict
+
+    @classmethod
+    def _get_relation_list(cls, sen: list, ner_dict: dict, triplets_list: list) -> list:
+        return_relation_list = []
+        for triplets in triplets_list:
+            source_entity = triplets["source entity"].lower()
+            target_entity = triplets["target entity"].lower()
+            relation = triplets["relation"]
+
+            for attr in [source_entity, target_entity]:
+                pass  # processed below per-variable
+
+            def _strip_negation(e: str) -> str:
+                if e in ["no evidence of", "no evidence", "no"]:
+                    return ""
+                for prefix in ["no evidence of ", "no evidence ", "no "]:
+                    if prefix in e:
+                        return e.replace(prefix, "")
+                return e
+
+            source_entity = _strip_negation(source_entity)
+            target_entity = _strip_negation(target_entity)
+            if not source_entity or not target_entity:
+                continue
+
+            source_start, source_end = cls._find_word_indices(sen, source_entity)
+            target_start, target_end = cls._find_word_indices(sen, target_entity)
+            if source_start == -1 or source_end == -1:
+                try:
+                    source_start, source_end = ner_dict[source_entity]
+                except KeyError:
+                    pass
+            if target_start == -1 or target_end == -1:
+                try:
+                    target_start, target_end = ner_dict[target_entity]
+                except KeyError:
+                    pass
+            return_relation_list.append(
+                [source_start, source_end, target_start, target_end, relation]
+            )
+        return return_relation_list
+
+    @classmethod
+    def _preprocess_sentences_relation(cls, json_data: dict, save_json_file: str) -> None:
+        import re
+        note_id_list = list(json_data.keys())
+        final_list = []
+        sentence_idx = 0
+
+        for select_id in tqdm(note_id_list):
+            data_dict_idx = json_data[select_id]
+            sentence_entity_dict = data_dict_idx["res"]
+            sentence_relation_dict = data_dict_idx["res_relation"]
+            sentence_list = list(sentence_entity_dict.keys())
+            relation_sentence_list = list(sentence_relation_dict.keys())
+
+            for sentence in sentence_list:
+                sen = re.sub(
+                    r"(?<! )(?=[/,-,:,.,!?()])|(?<=[/,-,:,.,!?()])(?! )",
+                    r" ",
+                    sentence.lower(),
+                ).split()
+                ner_list, ner_dict = cls._get_ner_list(sen, sentence_entity_dict[sentence])
+                try:
+                    temp_dict = {
+                        "doc_key": str(sentence_idx),
+                        "sentences": [sen],
+                        "ner": [ner_list],
+                    }
+                    try:
+                        relation_list = cls._get_relation_list(
+                            sen, ner_dict, sentence_relation_dict[sentence]
+                        )
+                    except Exception:
+                        relation_sentence = relation_sentence_list[
+                            sentence_list.index(sentence)
+                        ]
+                        relation_list = cls._get_relation_list(
+                            sen, ner_dict, sentence_relation_dict[relation_sentence]
+                        )
+                    temp_dict["relations"] = [relation_list]
+                    final_list.append(temp_dict)
+                    sentence_idx += 1
+                except Exception:
+                    print(sentence)
+
+                if sentence_idx % 1000 == 0:
+                    print(f"{sentence_idx + 1} sentences done")
+
+        with open(save_json_file, "w") as outfile:
+            for item in final_list:
+                json.dump(item, outfile)
+                outfile.write("\n")
 
 
 def get_messages(query):
@@ -2603,7 +2860,7 @@ def evaluate_notes(model, json_file,save_json_file):
     for select_id in note_id_list:
 
         if counter % 100 == 0:
-            print("Extracting relation ", counter, " out of ", len(note_id_list))
+            print("Extracting patient relation ", counter, " out of ", len(note_id_list))
         counter = counter + 1
         
         if select_id in save_data_dict:
@@ -2625,7 +2882,7 @@ def evaluate_notes(model, json_file,save_json_file):
             
         with open(save_json_file, 'w') as outfile:
             json.dump(save_data_dict, outfile, indent=4) 
-    print('SUMMARY COST: ',summary_cost)
+    # print('SUMMARY COST: ',summary_cost)
 
 
 def convert_json_format(input_dict):
@@ -2644,7 +2901,7 @@ def convert_json_format(input_dict):
             del input_dict["target"]
         return input_dict
     else:
-        print('Error:',input_dict)
+        # print('Error:',input_dict)
         return None
 
 
@@ -2701,3 +2958,20 @@ def postprocess_json(input_json_file,save_json_file):
             json.dump(save_data_dict, outfile, indent=4) 
         
 
+
+class RexKGUMLS(BaseTask):
+    
+    def __call__(self, patient: Patient) -> List[Dict]:
+        raise NotImplementedError(
+            "RexKGStructureData is a pipeline-style task. "
+            "Use RexKGStructureData.set_task(...) instead."
+        )
+
+    @classmethod
+    def set_task(
+        cls,
+        input_dir: str, 
+        out_dir: str
+    ) -> Dict[str, str]:
+        print()
+        

@@ -73,4 +73,6 @@ from .rexkg import (
     RexKGGetEntitiesRadiology,
     RexKGGPT4EntityExtractionRadiology,
     RexKGGPT4RelationExtractionRadiology,
+    RexKGStructureData,
+    RexKGUMLS
 )
