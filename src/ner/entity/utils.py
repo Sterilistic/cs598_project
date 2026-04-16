@@ -4,6 +4,12 @@ import logging
 
 logger = logging.getLogger('root')
 
+LABEL_ALIASES = {
+    'device_present': 'devices_present',
+    'device_notpresent': 'devices_notpresent',
+    'procedure': 'procedures',
+}
+
 def batchify(samples, batch_size):
     """
     Batchfy samples with a batch size
@@ -120,7 +126,9 @@ def convert_dataset_to_samples(dataset, max_span_length, ner_label2id=None, cont
                     if (i, j) not in sent_ner:
                         sample['spans_label'].append(0)
                     else:
-                        sample['spans_label'].append(ner_label2id[sent_ner[(i, j)]])
+                        label = sent_ner[(i, j)]
+                        label = LABEL_ALIASES.get(label, label)
+                        sample['spans_label'].append(ner_label2id[label])
             samples.append(sample)
     avg_length = sum([len(sample['tokens']) for sample in samples]) / len(samples)
     max_length = max([len(sample['tokens']) for sample in samples])

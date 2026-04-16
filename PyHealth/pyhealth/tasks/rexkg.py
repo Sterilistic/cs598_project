@@ -328,6 +328,15 @@ class RexKGEntityExtractionRadiology(BaseTask):
             root_logger.info(vars(args))
 
             ner_label2id, ner_id2label = legacy["get_labelmap"](legacy["task_ner_labels"][args.task])
+            # Accept common singular/plural label variants produced by upstream data prep.
+            label_aliases = {
+                "device_present": "devices_present",
+                "device_notpresent": "devices_notpresent",
+                "procedure": "procedures",
+            }
+            for alias, canonical in label_aliases.items():
+                if canonical in ner_label2id:
+                    ner_label2id[alias] = ner_label2id[canonical]
             num_ner_labels = len(legacy["task_ner_labels"][args.task]) + 1
 
             model_obj = legacy["EntityModel"](args, num_ner_labels=num_ner_labels)
