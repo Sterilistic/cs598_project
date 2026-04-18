@@ -5,11 +5,24 @@ channels:
   - nvidia
   - defaults
 dependencies:
-  - python=3.13
+  - python=3.12
   - pip
   - ipykernel
   - jupyterlab
   - setuptools
   - wheel
+  # - scispacy
+  # - quickumls
+  - openai==0.28
+  # - torch 
+  - transformers 
+  - pandas 
+  - tqdm 
+  - scikit-learn 
+  - protobuf 
+  - sentencepiece 
+  - tiktoken
+
+# pip install spacy scispacy quickumls
   - pip:
       - -e ./PyHealth

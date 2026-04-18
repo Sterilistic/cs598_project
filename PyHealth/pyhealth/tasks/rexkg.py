@@ -32,6 +32,8 @@ from pyhealth.processors import TextProcessor, SequenceProcessor
 from .base_task import BaseTask
 
 import openai
+import scispacy
+
 
 if TYPE_CHECKING:
     from ..datasets.rexkg import RexKGCheXpertDataset, RexKGDataset
@@ -2969,6 +2971,15 @@ def postprocess_json(input_json_file,save_json_file):
 
 
 class RexKGUMLS(BaseTask):
+    """Annotate extracted entities with UMLS candidates using SciSpacy linker.
+
+    This class mirrors the behavior of ``src/kg_construct/code/get_umls_entities.py``
+    but exposes it via the PyHealth task-style API.
+    """
+
+    task_name: str = "rexkg_umls"
+    input_schema: Dict[str, Union[str, Type]] = {"input_file": TextProcessor}
+    output_schema: Dict[str, Union[str, Type]] = {"output_file": TextProcessor}
     
     def __call__(self, patient: Patient) -> List[Dict]:
         raise NotImplementedError(
@@ -2979,8 +2990,92 @@ class RexKGUMLS(BaseTask):
     @classmethod
     def set_task(
         cls,
-        input_dir: str, 
-        out_dir: str
+        input_file: str, 
+        output_file: str
     ) -> Dict[str, str]:
-        print()
+        import spacy
+
+        # try:
+        scispacy_abbrev = importlib.import_module("scispacy.abbreviation")
+        scispacy_umls = importlib.import_module("scispacy.umls_linking")
+        # except ModuleNotFoundError as exc:
+        #     py_version = f"{sys.version_info.major}.{sys.version_info.minor}"
+        #     raise ModuleNotFoundError(
+        #         "Missing optional dependency 'scispacy'. Install required packages "
+        #         f"before running RexKGUMLS.set_task(...). Current Python: {py_version}.\n"
+        #         "SciSpaCy support is typically tied to specific SpaCy/Python versions; "
+        #         "if installation fails on Python 3.13, use a Python 3.10-3.12 environment.\n"
+        #         "Then install:\n"
+        #         "  pip install scispacy en-core-sci-lg"
+        #     ) from exc
+        AbbreviationDetector = scispacy_abbrev.AbbreviationDetector
+        UmlsEntityLinker = scispacy_umls.UmlsEntityLinker
+
+        input_path = Path(input_file).expanduser().resolve()
+        output_path = Path(output_file).expanduser().resolve()
+
+        if not input_path.exists():
+            raise FileNotFoundError(f"Input CSV not found: {input_path}")
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        try:
+            nlp = spacy.load("en_core_sci_lg")
+        except OSError as exc:
+            raise OSError(
+                "SciSpacy model 'en_core_sci_lg' is not installed. Install it with:\n"
+                "  pip install en-core-sci-lg"
+            ) from exc
+        abbreviation_pipe = AbbreviationDetector(nlp)
+        print("Loading UmlsEntityLinker")
+        linker = UmlsEntityLinker(resolve_abbreviations=True)
+        print("add_pipe scispacy_linker")
+        nlp.add_pipe(
+            "scispacy_linker",
+            config={"resolve_abbreviations": True, "linker_name": "umls"},
+        )
+        print("process content")
+
+        save_entities_dict: Dict[str, Dict[str, Any]] = {}
+        df = pd.read_csv(input_path)
+        for row in tqdm(df.itertuples(), total=len(df), desc="Processing entities"):
+            row_entity = row.entity
+            row_entity_type = row.entity_type
+            row_count = row.count
+            content_doc = nlp(row_entity)
+            entities = content_doc.ents
+            save_entities_dict[row_entity] = {
+                "entity_type": row_entity_type,
+                "count": row_count,
+                "umls_info": {},
+            }
+            for ent in entities:
+                save_entities_dict[row_entity]["umls_info"][ent.text] = []
+                entity_attributes = dir(ent)
+                for umls_ent in ent._.kb_ents:
+                    cui = umls_ent[0]
+                    possibility = umls_ent[1]
+                    umls_ent_info = linker.kb.cui_to_entity[cui]
+                    name = umls_ent_info[1]
+                    aliases = umls_ent_info[2]
+                    tui = umls_ent_info[3]
+                    definition = umls_ent_info[4]
+                    umls_ent_dict = {
+                        "CUI": cui,
+                        "Name": name,
+                        "Definition": definition,
+                        "TUI": tui,
+                        "Aliases": aliases,
+                        "Possibility": possibility,
+                    }
+                    save_entities_dict[row_entity]["umls_info"][ent.text].append(
+                        umls_ent_dict
+                    )
+
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(save_entities_dict, f, ensure_ascii=False, indent=4)
+
+        return {
+            "input_file": str(input_path),
+            "output_file": str(output_path),
+        }
         
